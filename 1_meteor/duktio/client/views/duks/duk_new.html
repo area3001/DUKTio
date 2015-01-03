@@ -1,0 +1,12 @@
+<template name="dukNew">
+  <h2>Create duk</h2>
+  {{#autoForm collection="Duks" id="dukNew" type="method" meteormethod="addDuk"}}
+    <fieldset>
+  	  {{> afQuickField name='name'}}
+      {{> afQuickField name='subdomain'}}
+      {{> afQuickField name='pathname'}}
+      {{> afQuickField name='code' rows=6}}
+    </fieldset>
+    <button type="submit" class="btn btn-primary">Create</button>
+  {{/autoForm}}
+</template>

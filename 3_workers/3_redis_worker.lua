@@ -1,0 +1,157 @@
+local REDIS_HOSTNAME = 'localhost' --'5.9.25.67'
+local REDIS_PORT = 6379
+local message_list_name = 'message_list'
+local pretty = require 'pl.pretty'  -- penlight.pretty library to print nifty tables
+local utils = require 'pl.utils'  -- penlight.util for  
+local cjson_safe = require "cjson.safe"  -- fast C json decoding
+
+-- save a pointer to globals that would be unreachable in sandbox
+local e = _ENV
+
+-- sample sandbox environment
+local sandbox_env = {
+  ipairs = ipairs,
+  next = next,
+  pairs = pairs,
+  pcall = pcall,
+  tonumber = tonumber,
+  tostring = tostring,
+  type = type,
+  unpack = unpack,
+  coroutine = { create = coroutine.create, resume = coroutine.resume, 
+      running = coroutine.running, status = coroutine.status, 
+      wrap = coroutine.wrap },
+  string = { byte = string.byte, char = string.char, find = string.find, 
+      format = string.format, gmatch = string.gmatch, gsub = string.gsub, 
+      len = string.len, lower = string.lower, match = string.match, 
+      rep = string.rep, reverse = string.reverse, sub = string.sub, 
+      upper = string.upper },
+  table = { insert = table.insert, maxn = table.maxn, remove = table.remove, 
+      sort = table.sort },
+  math = { abs = math.abs, acos = math.acos, asin = math.asin, 
+      atan = math.atan, atan2 = math.atan2, ceil = math.ceil, cos = math.cos, 
+      cosh = math.cosh, deg = math.deg, exp = math.exp, floor = math.floor, 
+      fmod = math.fmod, frexp = math.frexp, huge = math.huge, 
+      ldexp = math.ldexp, log = math.log, log10 = math.log10, max = math.max, 
+      min = math.min, modf = math.modf, pi = math.pi, pow = math.pow, 
+      rad = math.rad, random = math.random, sin = math.sin, sinh = math.sinh, 
+      sqrt = math.sqrt, tan = math.tan, tanh = math.tanh },
+  os = { clock = os.clock, difftime = os.difftime, time = os.time },
+  print = print,  -- TODO: need to disable this security-wise 
+}
+
+
+function run_sandbox(sb_env, sb_func, scriptname, ...)
+  if (not sb_func) then return nil end
+ 
+  -- TODO: Add sanitization for scriptname
+  local fun, message = load (sb_func, "tmp", "t" , sb_env) -- "t" for tables only 
+  if not fun then
+    print("In run_sandbox: No function loaded")
+    return nil, message
+  end
+
+  return pcall(fun)
+end
+
+
+local redis = require('redis')
+local redis_conn = redis.connect(REDIS_HOSTNAME, REDIS_PORT)
+local mongo = require('mongo')
+local db = assert(mongo.Connection.New())
+assert(db:connect('localhost:81'))
+
+    while true do
+      print ("=================================================")
+      -- left pop message from Redis message_list queue
+      local message_table = redis_conn:blpop(message_list_name, 0)
+      print("**** In worker")
+      pretty.dump(message_table)
+      message_table, err = cjson_safe.decode(message_table[2])  -- first element is 'message-list'
+
+      -- TODO: if err then log it and continu loop
+      local to_routing = message_table['routing']['to']
+      local subdomain, nodename, direction, port = unpack(utils.split(to_routing, ".", 1))  -- 1 for plain instead of regex
+
+      -- retrieve the script to execute also based on path
+      local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. nodename .. '"}'   -- TODO: Add security here
+      local q = assert(db:query('meteor.duks', query))
+      local dukt = q:next()
+
+      -- define send_out as a closure (using upvalues subdomain and nodename)
+      function send_out(portid, msg)
+        -- route message to system router dukt
+        -- TODO: sanity check on portid
+        local message = {
+          routing = {
+            to = 'system.router.in.endpoint',
+            from = subdomain .. "." .. nodename .. "." .. "out" .. "." .. portid
+          },
+          msg = msg,
+        }
+	-- encode and send to redis queue
+        pretty.dump(message)
+	message = cjson_safe.encode(message)
+        print ("In send_out: queuing msg")
+        redis_conn:rpush('message_list', message)
+        print ("In send_out: msg queued succesfully")
+      end
+      
+      -- disable the sandbox for system dukts
+      -- also add the DBes, and whatever you need (you can't access local variables in the global scope)
+      if subdomain == 'system' then
+        print("system sandbox")
+        sandbox_env_full = e -- hence no sandbox
+        sandbox_env_full.mongo_conn = db
+        sandbox_env_full.redis_conn = redis_conn
+        sandbox_env_full.pretty = pretty
+        sandbox_env_full.message = message_table
+        sandbox_env_full.cjson = cjson_safe
+       else
+        -- add the msg to the sandbox
+        print("user sandbox")
+        sandbox_env.msg = message_table.msg
+        sandbox_env.send_out= send_out
+      end
+
+      -- this block executes system as well as userland dukts
+      if dukt then
+	local script = dukt.code
+        local pcall_rc, result_or_err_msg
+        if subdomain == 'system' then
+      	  pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
+        else
+      	  pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
+        end
+
+	print("pcall_rc")
+	pretty.dump(pcall_rc)
+	print("result_or_err_msg")
+	pretty.dump(result_or_err_msg)
+      
+        -- write the result or error to the DB 
+        if pcall_rc then
+          -- success
+          result_or_err_msg = result_or_err_msg or ""
+          query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
+              '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
+              '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
+              '"userId": "' .. dukt.userId .. '"}'
+          print(query)
+          assert(db:insert('meteor.logs', query)) 
+          print("GOOD!")
+        else 
+          -- error
+          -- TODO: make the substitution in function call sanitize() and call where needed
+          result_or_err_msg = result_or_err_msg or ""
+          query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
+              '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
+              '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
+              '"userId": "' .. dukt.userId .. '"}'
+          assert(db:insert('meteor.logs', query))
+          print(result_or_err_msg)
+          print("eBAD!") 
+        end 
+      end
+    end
+

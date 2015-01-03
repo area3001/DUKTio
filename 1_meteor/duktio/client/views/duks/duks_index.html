@@ -1,0 +1,39 @@
+<template name="duksIndex">
+  <div class="row">
+    <div class="col-md-12">
+      <h1>Duks</h1>
+      <a class="btn btn-primary" href="{{pathFor 'dukNew'}}" role="button">New duk</a>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Subdomain</th>
+            <th>Pathname</th>
+            <th>Last Result</th> 
+            <th>Updated</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each duks}}
+          <tr>
+            <td><a href="{{pathFor 'dukShow'}}">{{name}}</a></td>
+            <td>{{subdomain}}</td>
+            <td>{{pathname}}</td>  
+            <td>{{lastresult}}</td>  
+            <td>{{showTimeAgo updatedAt}}</td>
+            <td>{{showPrettyTimestamp createdAt}}</td>
+            <td>
+              <a class="btn btn-xs btn-default" href="{{pathFor 'dukEdit'}}" role="button">Edit</a>
+              <a class="btn btn-xs btn-danger delete-duk" href="#" role="button">Delete</a>
+              </td>
+          </tr>
+          {{else}}
+            No duks
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>

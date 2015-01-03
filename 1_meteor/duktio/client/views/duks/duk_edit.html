@@ -1,0 +1,14 @@
+<template name="dukEdit">
+  <h2>Edit duk</h2>
+  {{#autoForm collection="Duks" doc=this id="dukEdit" type="method" meteormethod="saveDuk"}}
+    <fieldset>
+      {{> afQuickField name='_id' type="hidden" label=false}}
+      {{> afQuickField name='name'}}
+      {{> afQuickField name='subdomain'}}
+      {{> afQuickField name='pathname'}}
+      {{> afQuickField name='code' rows=6}}
+    </fieldset>
+    <button type="submit" class="btn btn-primary">Update</button>
+  {{/autoForm}}
+  <!-- {{> quickForm collection="Duks" doc=this id="dukEdit" type="update"}} -->
+</template>
