@@ -12,7 +12,9 @@ Router.map(function() {
     waitOn: function () {
       // TODO: can probably do this with promises
         return [Meteor.subscribe('logs'),
-               Meteor.subscribe('duks')];
+               Meteor.subscribe('duks'),
+               Meteor.subscribe('edges'),
+               ];
     },
     data: function () {
       return {

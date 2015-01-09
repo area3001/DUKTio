@@ -2,7 +2,6 @@
 SimpleSchema.debug = true
 
 Duks = new Meteor.Collection('duks');
-Logs = new Meteor.Collection('logs');
 
 IdPresentSchema = new SimpleSchema({
   _id: {
