@@ -1,12 +1,32 @@
 Template.duksIndex.rendered = function() {
+
+  var mouseDown = 0;
+  document.body.onmousedown = function() { 
+    mouseDown = 1;
+  }
+  document.body.onmouseup = function() {
+    mouseDown = 0;
+  }
+
   var graph = new joint.dia.Graph;
 
   var paper = new joint.dia.Paper({
       el: $('#duktile'),
-      width: 600,
-      height: 200,
+      width: "100%", height: 350, gridSize: 1,
       model: graph,
-      gridSize: 1
+      defaultLink: new joint.dia.Link({
+          attrs: { '.marker-target': { d: 'M 10 0 L 0 5 L 10 10 z' } }
+      }),
+      validateConnection: function(cellViewS, magnetS, cellViewT, magnetT, end, linkView) {
+          // Prevent linking from input ports.
+          if (magnetS && magnetS.getAttribute('type') === 'input') return false;
+          // Prevent linking from output ports to input ports within one element.
+          if (cellViewS === cellViewT) return false;
+          // Prevent linking to input ports.
+          return magnetT && magnetT.getAttribute('type') === 'input';
+      },
+      // Enable marking available cells & magnets
+      markAvailable: true
   });
 
   // Catch the delete and linking events 
@@ -17,6 +37,31 @@ Template.duksIndex.rendered = function() {
       Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
   });
   
+  graph.on('change:source change:target', function(link) {
+      // link change triggers constantly, so wait for the user to release the mouse button
+      if (mouseDown) return;
+
+      var sourcePort = link.get('source').port;
+      var sourceId = link.get('source').id;
+      var targetPort = link.get('target').port;
+      var targetId = link.get('target').id;
+
+      // HERE -- Store all link to the DB
+
+      // if source or target port are undefined, snap it back to the previous position
+      // if source and target port are defined, delete the previous link and add the new one
+
+      // var m = [
+      //     'The port <b>' + sourcePort,
+      //     '</b> of element with ID <b>' + sourceId,
+      //     '</b> is connected to port <b>' + targetPort,
+      //     '</b> of elemnt with ID <b>' + targetId + '</b>'
+      // ].join('');
+      // console.log(m);
+      // console.log(link);
+      
+  });
+
   // returns the name of the node from an edge
   function get_nodename_from_edge (edgename) {
     var re = new RegExp("^[a-zA-Z]+\.([a-zA-Z]+)\.(in|out)\.[0-9]+");
@@ -29,10 +74,21 @@ Template.duksIndex.rendered = function() {
 
   // node factory method
   function new_node(dukt) {
-    var new_node = new joint.shapes.basic.Rect({
-        position: { x: 100, y: 30 },
-        size: { width: 100, height: 30 },
-        attrs: { rect: { fill: 'blue' }, text: { text: dukt.name, fill: 'white' }}
+    // Make arrays for the input and output ports 
+    console.log(dukt.name);
+    var new_node = new joint.shapes.devs.Model({
+        position: { x: 50, y: 50 },
+        size: { width: 90, height: 50 },
+        //attrs: { rect: { fill: 'blue' }, text: { text: dukt.name, fill: 'white' }},
+        inPorts: ['in1','in2'],
+        outPorts: ['out'],
+        attrs: {
+            '.label': { text: dukt.name, //'ref-x': .4, 'ref-y': .2, 
+                        fill: 'white', 'font-weight': 'lighter', 'font-size': 14 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
+            rect: { fill: '#337ab7', rx: 10, ry: 10 },
+            '.inPorts circle': { fill: '#16A085', r: 6, magnet: 'passive', type: 'input' },
+            '.outPorts circle': { fill: '#E74C3C', r: 6, type: 'output' }
+        }
     });
     new_node.prop({orig: dukt});
     new_node.id = "graph_node_" + dukt.name;
@@ -70,8 +126,8 @@ Template.duksIndex.rendered = function() {
         graph.addCells([node]);
       },
       removed: function (doc) {
-        console.log("Observed node removal");
-        graph.getCell("graph_node_" + doc.name).remove();
+        console.log("###");console.log("Observed node removal: ");console.log(doc);console.log("^^^");
+        if (doc) graph.getCell("graph_node_" + doc.name).remove();
       }
     });
 
@@ -99,7 +155,12 @@ Template.duksIndex.helpers({
   lastresult: function () {
     console.log("searching result");
     console.log(this);
-    return Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}}).result; 
+    node = Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}});
+    if (node) {
+      return node.result; 
+    } else {
+      return "";
+    }
   },
 });
 

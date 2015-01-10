@@ -5,3 +5,13 @@ div#login-buttons.login-buttons-dropdown-align-right{
 }
 
 /*div#login-buttons.login-buttons-dropdown-align-right div.login-link-and-dropdown-list*/
+
+/* port styling */
+.available-magnet {
+    fill: yellow;
+}
+
+/* element styling */
+.available-cell rect {
+    stroke-dasharray: 5, 2;
+}
