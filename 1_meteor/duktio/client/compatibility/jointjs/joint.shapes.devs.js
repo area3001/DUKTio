@@ -7,9 +7,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 if (typeof exports === 'object') {
 
-    // PAVE: need to make this global in order to work with Meteor
-    // var joint = {
-    joint = {
+    var joint = {
         util: require('../src/core').util,
         shapes: {
             basic: require('./joint.shapes.basic')
@@ -26,7 +24,7 @@ joint.shapes.devs = {};
 
 joint.shapes.devs.Model = joint.shapes.basic.Generic.extend(_.extend({}, joint.shapes.basic.PortsModelInterface, {
 
-    markup: '<g class="rotatable"><g class="scalable"><rect class="body"/></g><text class="label"/><g class="inPorts"/><g class="outPorts"/></g>',
+    markup: '<g class="rotatable"><circle class="delete-node-circle set_visible_on_hover" style="display:none" href="#duks_overview_table"/><g class="scalable"><rect class="body"/></g><text class="label"/><g class="inPorts"/><g class="outPorts"/></g>',
     portMarkup: '<g class="port port<%= id %>"><circle class="port-body"/><text class="port-label"/></g>',
 
     defaults: joint.util.deepSupplement({
@@ -44,7 +42,7 @@ joint.shapes.devs.Model = joint.shapes.basic.Generic.extend(_.extend({}, joint.s
                 stroke: 'black'
             },
             '.port-body': {
-                r: 10,
+                r: 6,
                 magnet: true,
                 stroke: 'black'
             },
@@ -54,7 +52,8 @@ joint.shapes.devs.Model = joint.shapes.basic.Generic.extend(_.extend({}, joint.s
             },
             '.label': { text: 'Model', 'ref-x': .5, 'ref-y': 10, ref: '.body', 'text-anchor': 'middle' },
             '.inPorts .port-label': { x:-15, dy: 4, 'text-anchor': 'end' },
-            '.outPorts .port-label':{ x: 15, dy: 4 }
+            '.outPorts .port-label':{ x: 15, dy: 4 },
+            '.delete-node-circle':{'ref-x': -10, 'ref-y': -10, r: '6', fill: 'grey', ref: '.body'}
         }
 
     }, joint.shapes.basic.Generic.prototype.defaults),

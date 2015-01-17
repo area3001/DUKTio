@@ -29,12 +29,59 @@ Template.duksIndex.rendered = function() {
       markAvailable: true
   });
 
+  joint.shapes.html = {};
+  joint.shapes.html.Basicnode = joint.shapes.devs.Model.extend({
+      defaults: joint.util.deepSupplement({
+          position: { x: 50, y: 50 },
+          size: { width: 90, height: 50 },
+          // inPorts: ['in1','in2'],
+          // outPorts: ['out1'],
+          attrs: {
+              '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2, 
+                          fill: 'white', 'font-weight': 'lighter', 'font-size': 14 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
+              rect: { fill: '#337ab7', rx: 10, ry: 10 },
+              '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input' },
+              '.outPorts circle': { fill: '#E74C3C', type: 'output' },
+              '.delete-node-circle': { fill: 'red', graph_node_id: "placeholder"},
+          }
+      }, joint.shapes.devs.Model.prototype.defaults)
+  });
+
+  // Catch the delete and linking events 
+  // graph.on('all', function(event, cell) {
+  //     console.log("event:");
+  //     console.log(arguments);
+  // });
+
+  // attach jquery event handlers when cells are added to the graph
+  graph.on('add', function(cell) {
+      // display soem elements on hovering over a node
+      $(".element.devs.Model").hover(function(event){
+          $(".set_visible_on_hover").hide();
+          $(this).find(".set_visible_on_hover").show();
+      })
+      // Attach to node delete button
+      $(".delete-node-circle").unbind();  // removing previous click event handlers
+      $(".delete-node-circle").click(function(event){
+          console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
+      });
+
+      ////////////////
+      // JUST TESTING SOMETHING HERE< DO NOT KEEP THIS
+      $(".delete-node-circle").magnificPopup({
+          type:'inline',
+          midClick: true // Allow opening popup on middle mouse click. Always set it to true if you don't provide alternative source in href.
+      });
+      ////////////////
+
+  });
+
   // Catch the delete and linking events 
   graph.on('remove', function(event, cell) {
       source_node = event.attributes.orig._id;
       target_node = event.attributes.orig.target;
       console.log("Removing link between " + source_node + " and " + target_node);
-      Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
+      // Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
   });
   
   graph.on('change:source change:target', function(link) {
@@ -48,8 +95,19 @@ Template.duksIndex.rendered = function() {
 
       // HERE -- Store all link to the DB
 
-      // if source or target port are undefined, snap it back to the previous position
-      // if source and target port are defined, delete the previous link and add the new one
+      if (!(sourcePort && sourceId && targetPort && targetId)) {
+        // if source or target port are undefined, snap it back to the previous position
+        console.log("Resetting link");
+        link.set('source').id = link.get('prev_link_source').id;
+        link.set('source').port = link.get('prev_link_source').port;
+        link.set('target').id = link.get('prev_link_target').id;
+        link.set('target').port = link.get('prev_link_target').port;
+      } else {
+        // if source and target port are defined, delete the previous link from the DB, and add the new one
+        // Meteor.call("deleteEdge", {source: source_node, target: target_node});
+        // Meteor.call("deleteEdge", {source: source_node, target: target_node});
+      }
+
 
       // var m = [
       //     'The port <b>' + sourcePort,
@@ -58,59 +116,127 @@ Template.duksIndex.rendered = function() {
       //     '</b> of elemnt with ID <b>' + targetId + '</b>'
       // ].join('');
       // console.log(m);
-      // console.log(link);
+      console.log(link);
       
   });
 
-  // returns the name of the node from an edge
-  function get_nodename_from_edge (edgename) {
-    var re = new RegExp("^[a-zA-Z]+\.([a-zA-Z]+)\.(in|out)\.[0-9]+");
-    var m = re.exec(edgename);
-    if ((m) && (m[1])) {
-      return m[1];
-    } 
-    return null;
+  // node factory function
+  function create_node(db_node) {
+    var node = {};
+    var graph_prefix = "graph_node_";
+
+    node.db_orig = db_node;  
+
+    node.name = db_node.name;
+    node.subdomain = db_node.subdomain;
+    node.input_ports = db_node.input_ports;
+    node.output_ports = db_node.output_ports;
+
+    node.get_name = function() {
+      return this.name;
+    };
+    
+    node.get_graph_name = function() {
+      return graph_prefix + this.name;
+    };
+
+    node.get_subdomain = function() {
+      return this.subdomain;
+    };
+
+    node.get_input_ports = function() {
+      return this.input_ports;
+    };
+
+    node.get_output_ports = function() {
+      return this.output_ports;
+    };
+
+    return node;
   }
 
-  // node factory method
-  function new_node(dukt) {
-    // Make arrays for the input and output ports 
-    console.log(dukt.name);
-    var new_node = new joint.shapes.devs.Model({
-        position: { x: 50, y: 50 },
-        size: { width: 90, height: 50 },
-        //attrs: { rect: { fill: 'blue' }, text: { text: dukt.name, fill: 'white' }},
-        inPorts: ['in1','in2'],
-        outPorts: ['out'],
-        attrs: {
-            '.label': { text: dukt.name, //'ref-x': .4, 'ref-y': .2, 
-                        fill: 'white', 'font-weight': 'lighter', 'font-size': 14 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
-            rect: { fill: '#337ab7', rx: 10, ry: 10 },
-            '.inPorts circle': { fill: '#16A085', r: 6, magnet: 'passive', type: 'input' },
-            '.outPorts circle': { fill: '#E74C3C', r: 6, type: 'output' }
-        }
-    });
-    new_node.prop({orig: dukt});
-    new_node.id = "graph_node_" + dukt.name;
-    return new_node;
+  // link factory function
+  function create_port(full_name) {
+    var port = {};
+    var re = new RegExp("^[a-zA-Z_]*[|]?([a-zA-Z_]+)\.([a-zA-Z_]+)\.(in|out)\.([0-9]+)");
+
+    port.full = full_name;
+    
+    port.get_parts = function() {
+      var m = re.exec(this.full);
+      if ((m) && (m[0]) && (m[1]) && (m[2]) && (m[3])) {
+        return [m[1], m[2], m[3], m[4]];
+      }
+      return null;
+    };
+
+    port.get_full = function() {
+      return this.full;
+    };
+
+    port.get_subdomain = function() {
+      return this.get_parts()[0];
+    };
+
+    port.get_name = function() {
+      console.log(this.full);
+      return this.get_parts()[1];
+    };
+
+    port.get_direction = function() {
+      return this.get_parts()[2];
+    };
+
+    port.get_port = function() {
+      return this.get_parts()[3];
+    };
+
+    port.get_graph_short_name = function() {
+      return this.get_direction() + this.get_port();
+    };
+
+    return (port.get_parts() ? port : null);
   };
 
   // node factory method
-  function new_links(edge) {
-    var edge_source = get_nodename_from_edge(edge._id);
-    var link_source_node = Duks.findOne({name: edge_source});
+  function new_graph_node(node) {
+    var new_node = new joint.shapes.html.Basicnode({
+        position: { x: 50, y: 50 },
+        size: { width: 90, height: 50 },
+        attrs: {
+            '.label': { text: node.get_name()},
+             '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()}
+        },
+        inPorts: node.get_input_ports() || [],
+        outPorts: node.get_output_ports() || []
+    });
+    new_node.prop({orig: node});
+    new_node.id = node.get_graph_name();
+
+    return new_node;
+  };
+
+  // link factory method
+  function new_links(db_edge) {
+    var edge_source = create_port(db_edge._id);
+    if (edge_source === null) return [];    
+    var link_source_node = Duks.findOne({name: edge_source.get_name()});
 
     var links = []; 
-    edge.endpoints.forEach(
+    db_edge.endpoints.forEach(
       function(element, index){
-        var edge_target = get_nodename_from_edge(element._id);
-        if (edge_target) {
-          var link_target_node = Duks.findOne({name: edge_target});
+        var edge_target = create_port(element._id);
+        if ((edge_target) && (edge_target.get_name()) && (edge_target.get_name().length)) {
+          var link_target_node = Duks.findOne({name: edge_target.get_name()});
+          console.log("graph_node_" + edge_source.get_name() + " port: " + edge_source.get_graph_short_name());
           var link = new joint.dia.Link({
-            source: { id: "graph_node_" + edge_source},
-            target: { id: "graph_node_" + edge_target}
+            source: { id: "graph_node_" + edge_source.get_name(), port: edge_source.get_graph_short_name()},
+            target: { id: "graph_node_" + edge_target.get_name(), port: edge_target.get_graph_short_name()}
           });
-          link.prop({orig: {_id: edge._id, target: element._id}});
+          link.prop({orig: {id: edge_source.get_full(), target: edge_target.get_name()},       // orig data from DB
+                     prev_link_source: { id: "graph_node_" + edge_source.get_name()},   // previous link data
+                     prev_link_target: { id: "graph_node_" + edge_target.get_name()}
+                   });
           links.push(link);
         };
       }
@@ -122,8 +248,9 @@ Template.duksIndex.rendered = function() {
   Duks.find().observe({
       added: function (doc) {
         console.log("Observed node addition");
-        var node = new_node(doc);
-        graph.addCells([node]);
+        var new_node = create_node(doc);
+        var graph_node = new_graph_node(new_node);
+        graph.addCells([graph_node]);
       },
       removed: function (doc) {
         console.log("###");console.log("Observed node removal: ");console.log(doc);console.log("^^^");
@@ -132,9 +259,9 @@ Template.duksIndex.rendered = function() {
     });
 
   Edges.find().observe({
-      added: function (doc) {
+      added: function (db_edge) {
         console.log("Added links for a source port");
-        var links = new_links(doc);
+        var links = new_links(db_edge);
         graph.addCells(links);
       },
       removed: function (doc) {
