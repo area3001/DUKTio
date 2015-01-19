@@ -11,6 +11,28 @@ IdPresentSchema = new SimpleSchema({
   }
 })
 
+PositionSchema = new SimpleSchema({
+  x: {
+    type: Number,
+    optional: true
+  },  
+  y: {
+    type: Number,
+    optional: true
+  },
+});
+
+GraphSchema = new SimpleSchema({
+  position: {
+    type: PositionSchema,
+    optional: true
+  },
+  z: {
+    type: Number,
+    optional: true
+  }
+});
+
 DukSchema = new SimpleSchema({
   _id: {
     type: String,
@@ -77,8 +99,12 @@ DukSchema = new SimpleSchema({
       if (this.isUpdate) {
         return new Date();
       }
-    }
-  }
+    },
+  },
+  graph: {
+    type: GraphSchema,
+    optional: true
+  },
 });
 
 // Must remember to attach the schema to the collection
@@ -164,25 +190,33 @@ Meteor.methods({
     });
   },
   saveDuk: function (doc) {
+
     // TODO: check security (call clean or cleanschema)
     if (! Meteor.userId()) {
       throw new Meteor.Error("not-authorized");
     }
 
     // Important server-side check for security and data integrity
-    check(doc, DukSchema);
+    // check(doc, DukSchema);
     check({"_id": doc._id}, IdPresentSchema);
 
     duk_to_save = Duks.findOne({_id: doc._id, userId: Meteor.userId()});
 
     if (duk_to_save) {
-      console.log("Saving your Duk (from liver failure)");
-      Duks.update(
-        duk_to_save._id, {$set: {
+      console.log("Saving your Dukt");
+
+      var values_to_update = {
           name:doc.name, 
           subdomain:doc.subdomain,
           pathname: doc.pathname,
-          code: doc.code}
+          code: doc.code,
+          graph: doc.graph,
+        };
+
+      // call the mongo update
+      Duks.update(
+        duk_to_save._id, {$set: 
+          values_to_update
         }
       )
     }

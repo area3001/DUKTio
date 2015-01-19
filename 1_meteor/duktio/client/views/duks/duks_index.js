@@ -76,6 +76,19 @@ Template.duksIndex.rendered = function() {
 
   });
 
+  // Debounced version of the Meteor call function
+  var lazyMeteorCall = _.debounce(Meteor.call, 300);
+
+  // Catch the delete and linking events 
+  graph.on('change', function(event, cell) {
+      if (event.id.indexOf("graph_node_" == 0)) {
+
+        // Graph node changed, need to store it
+        db_node = {_id: event.attributes.orig.db_orig._id , graph: {position: event.attributes.position, z: event.attributes.z}};
+        lazyMeteorCall("saveDuk", db_node);
+      }
+  });
+
   // Catch the delete and linking events 
   graph.on('remove', function(event, cell) {
       source_node = event.attributes.orig._id;
