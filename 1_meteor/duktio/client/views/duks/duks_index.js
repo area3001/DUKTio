@@ -138,12 +138,16 @@ Template.duksIndex.rendered = function() {
     var node = {};
     var graph_prefix = "graph_node_";
 
-    node.db_orig = db_node;  
+    node.db_orig = db_node;
 
     node.name = db_node.name;
     node.subdomain = db_node.subdomain;
     node.input_ports = db_node.input_ports;
     node.output_ports = db_node.output_ports;
+    if ((db_node) && (db_node.graph)) {
+      node.position = db_node.graph.position;
+      node.z = db_node.graph.z;
+    }
 
     node.get_name = function() {
       return this.name;
@@ -163,6 +167,14 @@ Template.duksIndex.rendered = function() {
 
     node.get_output_ports = function() {
       return this.output_ports;
+    };
+
+    node.get_position = function() {
+      return this.position;
+    };
+
+    node.get_z = function() {
+      return this.z;
     };
 
     return node;
@@ -214,14 +226,15 @@ Template.duksIndex.rendered = function() {
   // node factory method
   function new_graph_node(node) {
     var new_node = new joint.shapes.html.Basicnode({
-        position: { x: 50, y: 50 },
+        position: node.get_position(),
+        z: node.get_z(),
         size: { width: 90, height: 50 },
         attrs: {
             '.label': { text: node.get_name()},
              '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()}
         },
         inPorts: node.get_input_ports() || [],
-        outPorts: node.get_output_ports() || []
+        outPorts: node.get_output_ports() || [],
     });
     new_node.prop({orig: node});
     new_node.id = node.get_graph_name();
