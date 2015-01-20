@@ -68,10 +68,10 @@ Template.duksIndex.rendered = function() {
 
       ////////////////
       // JUST TESTING SOMETHING HERE< DO NOT KEEP THIS
-      $(".delete-node-circle").magnificPopup({
-          type:'inline',
-          midClick: true // Allow opening popup on middle mouse click. Always set it to true if you don't provide alternative source in href.
-      });
+      // $(".delete-node-circle").magnificPopup({
+      //     type:'inline',
+      //     midClick: true // Allow opening popup on middle mouse click. Always set it to true if you don't provide alternative source in href.
+      // });
       ////////////////
 
   });
@@ -290,7 +290,7 @@ Template.duksIndex.rendered = function() {
         graph.addCells([graph_node]);
       },
       removed: function (doc) {
-        console.log("###");console.log("Observed node removal: ");console.log(doc);console.log("^^^");
+        console.log("###");console.log("Observed node removal: ");console.log("graph_node_" + doc.name);console.log("^^^");
         if (doc) graph.getCell("graph_node_" + doc.name).remove();
       }
     });
@@ -343,7 +343,7 @@ Template.duksIndex.events ({
 Template.duksIndex.events ({
   'click .add-duk': function(e) {
     e.preventDefault();
-    var new_title = "New Duk";
+    var new_title = "new_duk";
     
     if (Duks.findOne({"name": new_title})) {
       Notifications.info('Could not create new Duk', 'Duk with name "' + new_title + '" already exists. Better rename the existing one first.');
