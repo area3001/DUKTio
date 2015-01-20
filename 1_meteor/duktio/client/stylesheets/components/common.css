@@ -5,4 +5,7 @@ div#login-buttons.login-buttons-dropdown-align-right{
 }
 
 /*div#login-buttons.login-buttons-dropdown-align-right div.login-link-and-dropdown-list*/
-
+ul.notifications{
+	right: 60px;
+	top: 50px;
+}

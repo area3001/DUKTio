@@ -189,6 +189,25 @@ Meteor.methods({
       enabled: true
     });
   },
+  addEmptyDuk: function (new_title) {
+    // TODO: check security (call clean or cleanschema)
+
+    if (! Meteor.userId()) {
+      Notifications.error('Authorization Error', 'Please login to create a Duk');
+      throw new Meteor.Error("not-authorized");
+    }
+    
+    Duks.insert({
+      userId: Meteor.userId(),
+      authorId: Meteor.userId(),
+      name: new_title,
+      // subdomain: "",
+      // pathname: "",
+      // code: doc.code,
+      createdAt: new Date(),
+      enabled: true
+    });
+  },
   saveDuk: function (doc) {
 
     // TODO: check security (call clean or cleanschema)

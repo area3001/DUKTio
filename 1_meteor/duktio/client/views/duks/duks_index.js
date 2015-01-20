@@ -38,7 +38,7 @@ Template.duksIndex.rendered = function() {
           // outPorts: ['out1'],
           attrs: {
               '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2, 
-                          fill: 'white', 'font-weight': 'lighter', 'font-size': 14 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
+                          fill: 'white', 'font-weight': 'lighter', 'font-size': 24 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
               rect: { fill: '#337ab7', rx: 10, ry: 10 },
               '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input' },
               '.outPorts circle': { fill: '#E74C3C', type: 'output' },
@@ -142,6 +142,7 @@ Template.duksIndex.rendered = function() {
 
     node.name = db_node.name;
     node.subdomain = db_node.subdomain;
+    node.pathname = db_node.pathname;
     node.input_ports = db_node.input_ports;
     node.output_ports = db_node.output_ports;
     if ((db_node) && (db_node.graph)) {
@@ -175,6 +176,10 @@ Template.duksIndex.rendered = function() {
 
     node.get_z = function() {
       return this.z;
+    };
+
+    node.get_pathname = function() {
+      return this.pathname;
     };
 
     return node;
@@ -230,12 +235,18 @@ Template.duksIndex.rendered = function() {
         z: node.get_z(),
         size: { width: 90, height: 50 },
         attrs: {
-            '.label': { text: node.get_name()},
+            'text': { text: node.get_name(), fill: 'white', 'font-weight': 'lighter', 'font-size': 24},
              '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()}
         },
         inPorts: node.get_input_ports() || [],
         outPorts: node.get_output_ports() || [],
     });
+
+    if (node.get_pathname()) {
+      new_node.attr('rect/fill', '#559ce9');
+      new_node.attr('text/fill', 'white');
+    }
+
     new_node.prop({orig: node});
     new_node.id = node.get_graph_name();
 
@@ -325,6 +336,20 @@ Template.duksIndex.events ({
     if (confirm("Are you sure?")) {
       Duks.remove(item._id);
       console.log("Deleted!")
+    }
+  }
+});
+
+Template.duksIndex.events ({
+  'click .add-duk': function(e) {
+    e.preventDefault();
+    var new_title = "New Duk";
+    
+    if (Duks.findOne({"name": new_title})) {
+      Notifications.info('Could not create new Duk', 'Duk with name "' + new_title + '" already exists. Better rename the existing one first.');
+    }
+    else {
+      Meteor.call("addEmptyDuk", new_title);
     }
   }
 });
