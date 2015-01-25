@@ -108,7 +108,7 @@ DukSchema = new SimpleSchema({
   input_ports: {
     type: Array,
     optional: true,
-    minCount: 1,
+    minCount: 0,
     maxCount: 4
   },
   "input_ports.$": {
@@ -118,7 +118,7 @@ DukSchema = new SimpleSchema({
   output_ports: {
     type: Array,
     optional: true,
-    minCount: 1,
+    minCount: 0,
     maxCount: 4
   },
   "output_ports.$": {
