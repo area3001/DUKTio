@@ -9,3 +9,9 @@ ul.notifications{
 	right: 60px;
 	top: 50px;
 }
+
+.label{
+	font-size: 14px;  /*Need to overwrite this here, because bootstrap interferes with jointjs styles otherwise*/
+	font-weight: normal;
+	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}

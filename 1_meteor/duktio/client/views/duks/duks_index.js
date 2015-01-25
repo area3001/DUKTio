@@ -38,7 +38,7 @@ Template.duksIndex.rendered = function() {
           // outPorts: ['out1'],
           attrs: {
               '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2, 
-                          fill: 'white', 'font-weight': 'lighter', 'font-size': 24 },  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
+                          fill: 'white'},  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
               rect: { fill: '#337ab7', rx: 10, ry: 10 },
               '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input' },
               '.outPorts circle': { fill: '#E74C3C', type: 'output' },
@@ -235,16 +235,21 @@ Template.duksIndex.rendered = function() {
         z: node.get_z(),
         size: { width: 90, height: 50 },
         attrs: {
-            'text': { text: node.get_name(), fill: 'white', 'font-weight': 'lighter', 'font-size': 24},
-             '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()}
+            'text': { text: node.get_name(), fill: 'white', 'font-size': 14},    // See external ccs to overwrite bootstrap external css
+            '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()},
+            '.port-label': {fill: 'black', 'font-size': 16, dy: "-7"}, 
         },
         inPorts: node.get_input_ports() || [],
         outPorts: node.get_output_ports() || [],
     });
+    console.log("Input ports:")
+    console.log(new_node.attributes.inPorts);
 
     if (node.get_pathname()) {
       new_node.attr('rect/fill', '#559ce9');
       new_node.attr('text/fill', 'white');
+      new_node.set('inPorts', [node.get_pathname()]);
+      new_node.attr('.inPorts circle', { fill: 'black', type: 'no-input' });
     }
 
     new_node.prop({orig: node});

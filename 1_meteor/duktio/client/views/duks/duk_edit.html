@@ -1,5 +1,7 @@
 <template name="dukEdit">
   <h2>Edit duk</h2>
+  <!-- {{> quickForm id="fields4" schema="DukSchema" fields="name,subdomain,pathname,code,inputPorts"}} -->
+
   {{#autoForm collection="Duks" doc=this id="dukEdit" type="method" meteormethod="saveDuk"}}
     <fieldset>
       {{> afQuickField name='_id' type="hidden" label=false}}
@@ -7,6 +9,8 @@
       {{> afQuickField name='subdomain'}}
       {{> afQuickField name='pathname'}}
       {{> afQuickField name='code' rows=6}}
+      {{> afQuickField name='input_ports'}}
+      {{> afQuickField name='output_ports'}}
     </fieldset>
     <button type="submit" class="btn btn-primary">Update</button>
   {{/autoForm}}

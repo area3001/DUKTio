@@ -105,6 +105,26 @@ DukSchema = new SimpleSchema({
     type: GraphSchema,
     optional: true
   },
+  input_ports: {
+    type: Array,
+    optional: true,
+    minCount: 1,
+    maxCount: 4
+  },
+  "input_ports.$": {
+    type: String,
+    optional: true
+  },
+  output_ports: {
+    type: Array,
+    optional: true,
+    minCount: 1,
+    maxCount: 4
+  },
+  "output_ports.$": {
+    type: String,
+    optional: true
+  }
 });
 
 // Must remember to attach the schema to the collection
@@ -230,6 +250,8 @@ Meteor.methods({
           pathname: doc.pathname,
           code: doc.code,
           graph: doc.graph,
+          input_ports: doc.input_ports,
+          output_ports: doc.output_ports,
         };
 
       // call the mongo update
