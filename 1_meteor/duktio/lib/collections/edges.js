@@ -25,6 +25,7 @@ Edges.allow({
 // Meteor methods related to collection
 Meteor.methods({
   addEdge: function (doc) {
+    console.log("In addEdge")
     // TODO: check security (call clean or cleanschema)
 
     if (! Meteor.userId()) {
@@ -32,23 +33,25 @@ Meteor.methods({
       throw new Meteor.Error("not-authorized");
     }
     // Important server-side check for security and data integrity
-    check(doc, DukSchema);
+    // check(doc, DukSchema);
 
     // If the edge does not exist create it
-    edge_exists = Edges.findOne({_id: doc.source});
+    var edge_exists = Edges.findOne({_id: doc.source});
     if (!edge_exists) {
       Edges.insert({
         _id: doc.source,
         endpoints: [doc.target]
       });
-    }
-    else {
-      // If the edge already exists, update it 
-      // Add the target as endpoint to the source edge
-      Edges.update(
-        {_id: doc.source},
-        {$push: {endpoints: doc.target}}
-      );
+    } else {
+      // If the edge (source) already exists, check if this link already exists
+      var link_exists = Edges.findOne({_id: doc.source, endpoints: doc.target});
+      if (!link_exists) {
+        // Add the target as endpoint to the source edge
+        Edges.update(
+          {_id: doc.source},
+          {$push: {endpoints: doc.target}}
+        );
+      };
     };
   },
   saveEdge: function (link_to_delete, link_to_add) {

@@ -1,0 +1,14 @@
+<template name="profile">
+
+    {{#autoForm collection="Meteor.users" doc=this id="profileEdit" type="method" meteormethod="saveProfile"}}
+	    <fieldset>
+	      {{> afQuickField name='_id' type="hidden" label=false}}
+	      {{> afQuickField name='profile.name'}}
+	      {{> afQuickField name='profile.subdomain'}}
+	    </fieldset>
+	    <button type="submit" class="btn btn-primary">Update</button>
+	  {{/autoForm}}
+
+    <!-- add an autoform here -->
+
+</template>

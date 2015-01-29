@@ -15,6 +15,9 @@
         <ul class="nav navbar-nav">
           <li class="{{active 'frontpage'}}"><a href="{{pathFor 'frontpage'}}">Home</a></li>
           <li class="{{active 'duksIndex'}}"><a href="{{pathFor 'duksIndex'}}">Duks</a></li>
+          {{#with currentUser}}
+            <li class="{{active 'profile'}}"><a href="{{pathFor 'profile' _id}}">Profile</a></li>
+          {{/with}}
         </ul>
         <ul class="nav navbar-nav navbar-right">
           <li class="{{active 'about'}}"><a href="{{pathFor 'about'}}">About</a></li>

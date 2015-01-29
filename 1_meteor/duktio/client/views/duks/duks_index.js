@@ -81,57 +81,79 @@ Template.duksIndex.rendered = function() {
 
   // Catch the delete and linking events 
   graph.on('change', function(event, cell) {
-      if (event.id.indexOf("graph_node_" == 0)) {
-
+      console.log("Graph changed");
+      if ((event.attributes) && (event.attributes.type !== 'link') && 
+          (event.id) && (event.id.indexOf("graph_node_" == 0))) {
         // Graph node changed, need to store it
+        console.log("Graph nodes changed");
         db_node = {_id: event.attributes.orig.db_orig._id , graph: {position: event.attributes.position, z: event.attributes.z}};
         lazyMeteorCall("saveDuk", db_node);
+      }
+      if ((event.attributes) && (event.attributes.type == 'link') &&
+          (event.attributes.source) && (event.attributes.source.port) &&
+          (event.attributes.target) && (event.attributes.target.port)) {
+        console.log("Graph links changed");
+        subdomain = Meteor.user().profile.subdomain;
+        var link_from = subdomain + "." + event.attributes.source.id.substring('graph_node_'.length) + ".out." + event.attributes.source.port;
+        var link_to = subdomain + "." + event.attributes.target.id.substring('graph_node_'.length) + ".in." + event.attributes.target.port;
+        var link = {source: link_from, target: link_to};
+        console.log(event.id);
+        console.log(subdomain);
+        //if the id doesn't start with your subdomain than add a new link
+        if (event.id.lastIndexOf(subdomain, 0) !== 0) {
+          console.log("calling Meteor.addEdge");
+          lazyMeteorCall("addEdge", link);
+          event.remove();
+        } else {
+          console.log("calling Meteor.saveEdge");
+          lazyMeteorCall("saveEdge", link);
+        }
       }
   });
 
   // Catch the delete and linking events 
-  graph.on('remove', function(event, cell) {
-      source_node = event.attributes.orig._id;
-      target_node = event.attributes.orig.target;
-      console.log("Removing link between " + source_node + " and " + target_node);
-      // Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
-  });
+  // graph.on('remove', function(event, cell) {
+  //     source_node = event.attributes.orig._id;
+  //     target_node = event.attributes.orig.target;
+  //     console.log("Removing link between " + source_node + " and " + target_node);
+  //     // Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
+  // });
   
-  graph.on('change:source change:target', function(link) {
-      // link change triggers constantly, so wait for the user to release the mouse button
-      if (mouseDown) return;
+  // graph.on('change:source change:target', function(link) {
+  //     // link change triggers constantly, so wait for the user to release the mouse button
+  //     if (mouseDown) return;
 
-      var sourcePort = link.get('source').port;
-      var sourceId = link.get('source').id;
-      var targetPort = link.get('target').port;
-      var targetId = link.get('target').id;
+  //     var sourcePort = link.get('source').port;
+  //     var sourceId = link.get('source').id;
+  //     var targetPort = link.get('target').port;
+  //     var targetId = link.get('target').id;
 
-      // HERE -- Store all link to the DB
+  //     // HERE -- Store all link to the DB
 
-      if (!(sourcePort && sourceId && targetPort && targetId)) {
-        // if source or target port are undefined, snap it back to the previous position
-        console.log("Resetting link");
-        link.set('source').id = link.get('prev_link_source').id;
-        link.set('source').port = link.get('prev_link_source').port;
-        link.set('target').id = link.get('prev_link_target').id;
-        link.set('target').port = link.get('prev_link_target').port;
-      } else {
-        // if source and target port are defined, delete the previous link from the DB, and add the new one
-        // Meteor.call("deleteEdge", {source: source_node, target: target_node});
-        // Meteor.call("deleteEdge", {source: source_node, target: target_node});
-      }
+  //     if (!(sourcePort && sourceId && targetPort && targetId)) {
+  //       // if source or target port are undefined, snap it back to the previous position
+  //       console.log("Resetting link");
+  //       link.set('source').id = link.get('prev_link_source').id;
+  //       link.set('source').port = link.get('prev_link_source').port;
+  //       link.set('target').id = link.get('prev_link_target').id;
+  //       link.set('target').port = link.get('prev_link_target').port;
+  //     } else {
+  //       // if source and target port are defined, delete the previous link from the DB, and add the new one
+  //       // Meteor.call("deleteEdge", {source: source_node, target: target_node});
+  //       // Meteor.call("deleteEdge", {source: source_node, target: target_node});
+  //     }
 
 
-      // var m = [
-      //     'The port <b>' + sourcePort,
-      //     '</b> of element with ID <b>' + sourceId,
-      //     '</b> is connected to port <b>' + targetPort,
-      //     '</b> of elemnt with ID <b>' + targetId + '</b>'
-      // ].join('');
-      // console.log(m);
-      console.log(link);
+  //     // var m = [
+  //     //     'The port <b>' + sourcePort,
+  //     //     '</b> of element with ID <b>' + sourceId,
+  //     //     '</b> is connected to port <b>' + targetPort,
+  //     //     '</b> of elemnt with ID <b>' + targetId + '</b>'
+  //     // ].join('');
+  //     // console.log(m);
+  //     console.log(link);
       
-  });
+  // });
 
   // node factory function
   function create_node(db_node) {
@@ -187,8 +209,17 @@ Template.duksIndex.rendered = function() {
 
   // link factory function
   function create_port(full_name) {
+    console.log("###");console.log("in create_port: ");console.log(arguments);console.log("^^^");
+
     var port = {};
-    var re = new RegExp("^[a-zA-Z_]*[|]?([a-zA-Z_]+)\.([a-zA-Z_]+)\.(in|out)\.([0-9]+)");
+    var re = new RegExp("^([a-zA-Z_]+)\.([a-zA-Z0-9_]+)\.(in|out)\.([a-zA-Z0-9_]+)");
+
+    full_name = full_name.split("|", 2);
+    if (full_name.length === 2) {
+      full_name = full_name[1];
+    } else {
+      full_name = full_name[0];
+    }
 
     port.full = full_name;
     
@@ -225,6 +256,7 @@ Template.duksIndex.rendered = function() {
       return this.get_direction() + this.get_port();
     };
 
+    console.log("###");console.log("out create_port: ");console.log(port);console.log("^^^");
     return (port.get_parts() ? port : null);
   };
 
@@ -260,6 +292,7 @@ Template.duksIndex.rendered = function() {
 
   // link factory method
   function new_links(db_edge) {
+    console.log("###");console.log("in new links: ");console.log(arguments);console.log("^^^");
     var edge_source = create_port(db_edge._id);
     if (edge_source === null) return [];    
     var link_source_node = Duks.findOne({name: edge_source.get_name()});
@@ -267,13 +300,20 @@ Template.duksIndex.rendered = function() {
     var links = []; 
     db_edge.endpoints.forEach(
       function(element, index){
-        var edge_target = create_port(element._id);
+        var edge_target = create_port(element);
+        console.log("*******");
+        console.log(element);
+        console.log(edge_target);
+        console.log(edge_target.get_name());
+        console.log("*******");
         if ((edge_target) && (edge_target.get_name()) && (edge_target.get_name().length)) {
           var link_target_node = Duks.findOne({name: edge_target.get_name()});
-          console.log("graph_node_" + edge_source.get_name() + " port: " + edge_source.get_graph_short_name());
+          console.log("graph_node_" + edge_source.get_name() + " port: " + edge_source.get_port());
+          console.log("to:");
+          console.log("graph_node_" + edge_target.get_name() + " port: " + edge_target.get_port());
           var link = new joint.dia.Link({
-            source: { id: "graph_node_" + edge_source.get_name(), port: edge_source.get_graph_short_name()},
-            target: { id: "graph_node_" + edge_target.get_name(), port: edge_target.get_graph_short_name()}
+            source: { id: "graph_node_" + edge_source.get_name(), port: edge_source.get_port()},
+            target: { id: "graph_node_" + edge_target.get_name(), port: edge_target.get_port()}
           });
           link.prop({orig: {id: edge_source.get_full(), target: edge_target.get_name()},       // orig data from DB
                      prev_link_source: { id: "graph_node_" + edge_source.get_name()},   // previous link data
@@ -283,6 +323,7 @@ Template.duksIndex.rendered = function() {
         };
       }
     );
+    console.log("###");console.log("out new links: ");console.log(links);console.log("^^^");
     return links;
   };
 
@@ -301,10 +342,20 @@ Template.duksIndex.rendered = function() {
     });
 
   Edges.find().observe({
-      added: function (db_edge) {
-        console.log("Added links for a source port");
+      // source was added 
+      added: function (db_edge) { 
         var links = new_links(db_edge);
+        console.log("###");console.log("Observed link add: ");console.log(arguments);console.log("^^^");
         graph.addCells(links);
+      },
+      // a target was added or removed in an existing source endpoint
+      changed: function (id, fields) { 
+        console.log("###");console.log("Observed link change: ");console.log(arguments);console.log("^^^");
+        added_link = _.difference(id.endpoints, fields.endpoints);
+        if (added_link) {
+          var links = new_links({_id: id._id, endpoints: added_link});
+          graph.addCells(links);
+        }
       },
       removed: function (doc) {
         // graph.removeNode(doc._id);
