@@ -69,16 +69,16 @@ Meteor.methods({
 
   },
   deleteEdge: function (link_to_delete) {
-    console.log("In meteor.methods.deleteEdge");
-    console.log(link_to_delete);
+    console.log("> In meteor.methods.deleteEdge");
     var edge_to_delete = Edges.findOne({_id: link_to_delete.source});  //TODO: need to add userid
     console.log(edge_to_delete);
     if (edge_to_delete) {
       Edges.update(
         {_id: link_to_delete.source},
-        {$pull: {endpoints: {_id: link_to_delete.target}}},
+        {$pull: {endpoints: link_to_delete.target}},
         {multi: true}
       );
     };
+    console.log("< Out meteor.methods.deleteEdge");
   },
 });

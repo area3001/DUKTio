@@ -1,13 +1,22 @@
 Template.duksIndex.rendered = function() {
 
-  var mouseDown = 0;
-  document.body.onmousedown = function() { 
-    mouseDown = 1;
-  }
-  document.body.onmouseup = function() {
-    mouseDown = 0;
-  }
+  //////////////////////////////////////////////////////////////////////////////////
+  // Some helpers
+  //////////////////////////////////////////////////////////////////////////////////
 
+  // Debounced version of the Meteor call function
+  var lazyMeteorCall = _.debounce(Meteor.call, 300);
+
+  // Need this to know whether mouse is up or down in event handling
+  var mouseDown = 0;
+  document.body.onmousedown = function() {mouseDown = 1; } 
+  document.body.onmouseup = function() {mouseDown = 0; }
+
+  //////////////////////////////////////////////////////////////////////////////////
+  // Jointjs 
+  //////////////////////////////////////////////////////////////////////////////////
+
+  // Setting up the jointjs graph and paper
   var graph = new joint.dia.Graph;
 
   var paper = new joint.dia.Paper({
@@ -29,6 +38,7 @@ Template.duksIndex.rendered = function() {
       markAvailable: true
   });
 
+  // Defining a jointjs cell for the nodes
   joint.shapes.html = {};
   joint.shapes.html.Basicnode = joint.shapes.devs.Model.extend({
       defaults: joint.util.deepSupplement({
@@ -47,6 +57,10 @@ Template.duksIndex.rendered = function() {
       }, joint.shapes.devs.Model.prototype.defaults)
   });
 
+  //////////////////////////////////////////////////////////////////////////////////
+  // Jointjs event handling
+  //////////////////////////////////////////////////////////////////////////////////
+ 
   // Catch the delete and linking events 
   // graph.on('all', function(event, cell) {
   //     console.log("event:");
@@ -55,7 +69,8 @@ Template.duksIndex.rendered = function() {
 
   // attach jquery event handlers when cells are added to the graph
   graph.on('add', function(cell) {
-      // display soem elements on hovering over a node
+      console.log("> In graph.on add");
+      // display some elements on hovering over a node
       $(".element.devs.Model").hover(function(event){
           $(".set_visible_on_hover").hide();
           $(this).find(".set_visible_on_hover").show();
@@ -63,7 +78,7 @@ Template.duksIndex.rendered = function() {
       // Attach to node delete button
       $(".delete-node-circle").unbind();  // removing previous click event handlers
       $(".delete-node-circle").click(function(event){
-          console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
+          // console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
       });
 
       ////////////////
@@ -74,50 +89,51 @@ Template.duksIndex.rendered = function() {
       // });
       ////////////////
 
+      console.log("< Out graph.on add");
   });
-
-  // Debounced version of the Meteor call function
-  var lazyMeteorCall = _.debounce(Meteor.call, 300);
 
   // Catch the delete and linking events 
   graph.on('change', function(event, cell) {
-      console.log("Graph changed");
+      console.log("> In graph.on changed");
       if ((event.attributes) && (event.attributes.type !== 'link') && 
           (event.id) && (event.id.indexOf("graph_node_" == 0))) {
         // Graph node changed, need to store it
-        console.log("Graph nodes changed");
+        console.log(". Graph nodes changed");
         db_node = {_id: event.attributes.orig.db_orig._id , graph: {position: event.attributes.position, z: event.attributes.z}};
+        console.log(".. calling Meteor.addEdge");
         lazyMeteorCall("saveDuk", db_node);
       }
       if ((event.attributes) && (event.attributes.type == 'link') &&
           (event.attributes.source) && (event.attributes.source.port) &&
           (event.attributes.target) && (event.attributes.target.port)) {
-        console.log("Graph links changed");
-        subdomain = Meteor.user().profile.subdomain;
+        console.log(". Graph links changed");
+        var subdomain = Meteor.user().profile.subdomain;
         var link_from = subdomain + "." + event.attributes.source.id.substring('graph_node_'.length) + ".out." + event.attributes.source.port;
         var link_to = subdomain + "." + event.attributes.target.id.substring('graph_node_'.length) + ".in." + event.attributes.target.port;
         var link = {source: link_from, target: link_to};
-        console.log(event.id);
-        console.log(subdomain);
         //if the id doesn't start with your subdomain than add a new link
         if (event.id.lastIndexOf(subdomain, 0) !== 0) {
-          console.log("calling Meteor.addEdge");
+          console.log(".. calling Meteor.addEdge");
           lazyMeteorCall("addEdge", link);
           event.remove();
         } else {
-          console.log("calling Meteor.saveEdge");
+          console.log(".. calling Meteor.saveEdge");
           lazyMeteorCall("saveEdge", link);
         }
       }
+      console.log("< Out graph.on changed");
   });
 
   // Catch the delete and linking events 
-  // graph.on('remove', function(event, cell) {
-  //     source_node = event.attributes.orig._id;
-  //     target_node = event.attributes.orig.target;
-  //     console.log("Removing link between " + source_node + " and " + target_node);
-  //     // Meteor.call("deleteEdge", {source: source_node, target: target_node}); 
-  // });
+  graph.on('remove', function(event, cell) {
+      console.log("> In graph.on removed");
+      var subdomain = Meteor.user().profile.subdomain;
+      var link_from = subdomain + "." + event.attributes.source.id.substring('graph_node_'.length) + ".out." + event.attributes.source.port;
+      var link_to = subdomain + "." + event.attributes.target.id.substring('graph_node_'.length) + ".in." + event.attributes.target.port;
+      // Watch it: triggers to much
+      Meteor.call("deleteEdge", {source: link_from, target: link_to}); 
+      console.log("< Out graph.on removed");
+  });
   
   // graph.on('change:source change:target', function(link) {
   //     // link change triggers constantly, so wait for the user to release the mouse button
@@ -155,8 +171,13 @@ Template.duksIndex.rendered = function() {
       
   // });
 
+  //////////////////////////////////////////////////////////////////////////////////
+  // Intermediary representarions between the DB and the graph
+  //////////////////////////////////////////////////////////////////////////////////
+
   // node factory function
   function create_node(db_node) {
+    console.log("> In create_node");
     var node = {};
     var graph_prefix = "graph_node_";
 
@@ -204,12 +225,13 @@ Template.duksIndex.rendered = function() {
       return this.pathname;
     };
 
+    console.log("< Out create_node");
     return node;
   }
 
   // link factory function
   function create_port(full_name) {
-    console.log("###");console.log("in create_port: ");console.log(arguments);console.log("^^^");
+    console.log("> In create_port: ");console.log(arguments);
 
     var port = {};
     var re = new RegExp("^([a-zA-Z_]+)\.([a-zA-Z0-9_]+)\.(in|out)\.([a-zA-Z0-9_]+)");
@@ -256,12 +278,12 @@ Template.duksIndex.rendered = function() {
       return this.get_direction() + this.get_port();
     };
 
-    console.log("###");console.log("out create_port: ");console.log(port);console.log("^^^");
+    console.log("Out create_port: ");console.log(port);
     return (port.get_parts() ? port : null);
   };
 
-  // node factory method
   function new_graph_node(node) {
+    console.log("> In new_graph_node");
     var new_node = new joint.shapes.html.Basicnode({
         position: node.get_position(),
         z: node.get_z(),
@@ -287,12 +309,13 @@ Template.duksIndex.rendered = function() {
     new_node.prop({orig: node});
     new_node.id = node.get_graph_name();
 
+    console.log("< Out new_graph_node");
     return new_node;
   };
 
   // link factory method
   function new_links(db_edge) {
-    console.log("###");console.log("in new links: ");console.log(arguments);console.log("^^^");
+    console.log("> In new links: ");console.log(arguments);
     var edge_source = create_port(db_edge._id);
     if (edge_source === null) return [];    
     var link_source_node = Duks.findOne({name: edge_source.get_name()});
@@ -301,16 +324,8 @@ Template.duksIndex.rendered = function() {
     db_edge.endpoints.forEach(
       function(element, index){
         var edge_target = create_port(element);
-        console.log("*******");
-        console.log(element);
-        console.log(edge_target);
-        console.log(edge_target.get_name());
-        console.log("*******");
         if ((edge_target) && (edge_target.get_name()) && (edge_target.get_name().length)) {
           var link_target_node = Duks.findOne({name: edge_target.get_name()});
-          console.log("graph_node_" + edge_source.get_name() + " port: " + edge_source.get_port());
-          console.log("to:");
-          console.log("graph_node_" + edge_target.get_name() + " port: " + edge_target.get_port());
           var link = new joint.dia.Link({
             source: { id: "graph_node_" + edge_source.get_name(), port: edge_source.get_port()},
             target: { id: "graph_node_" + edge_target.get_name(), port: edge_target.get_port()}
@@ -323,43 +338,52 @@ Template.duksIndex.rendered = function() {
         };
       }
     );
-    console.log("###");console.log("out new links: ");console.log(links);console.log("^^^");
+    console.log("< Out new links: ");console.log(links);
     return links;
   };
 
+  //////////////////////////////////////////////////////////////////////////////////
+  // DB event handling
+  //////////////////////////////////////////////////////////////////////////////////
+
   // observe the reactive datasource to add nodes and links to the graph
-  Duks.find().observe({
+  duks_observe_handle = Duks.find().observe({
       added: function (doc) {
-        console.log("Observed node addition");
+        console.log("> In duks.find observe.added");
         var new_node = create_node(doc);
         var graph_node = new_graph_node(new_node);
         graph.addCells([graph_node]);
+        console.log("< Out duks.find observe.added");
       },
       removed: function (doc) {
-        console.log("###");console.log("Observed node removal: ");console.log("graph_node_" + doc.name);console.log("^^^");
+        console.log("> In duks.find observe.removed");
         if (doc) graph.getCell("graph_node_" + doc.name).remove();
+        console.log("< Out duks.find observe.removed");
       }
     });
 
-  Edges.find().observe({
+  edges_observe_handle = Edges.find().observe({
       // source was added 
       added: function (db_edge) { 
+        console.log("> In edges.find observe.added");
         var links = new_links(db_edge);
-        console.log("###");console.log("Observed link add: ");console.log(arguments);console.log("^^^");
+        console.log("< Out edges.find observe.added");
         graph.addCells(links);
       },
       // a target was added or removed in an existing source endpoint
       changed: function (id, fields) { 
-        console.log("###");console.log("Observed link change: ");console.log(arguments);console.log("^^^");
+        console.log("> In edges.find observe.changed");
         added_link = _.difference(id.endpoints, fields.endpoints);
         if (added_link) {
           var links = new_links({_id: id._id, endpoints: added_link});
           graph.addCells(links);
         }
+        console.log("< Out edges.find observe.changed");
       },
       removed: function (doc) {
         // graph.removeNode(doc._id);
-        console.log("Observed a link removal");
+        console.log("> In edges.find observe.removed");
+        console.log("< Out edges.find observe.removed");
       }
     });
 
@@ -367,13 +391,15 @@ Template.duksIndex.rendered = function() {
 
   // Event: Open Editor
 
-
-
 };
+
+//////////////////////////////////////////////////////////////////////////////////
+// Meteor data for templates
+//////////////////////////////////////////////////////////////////////////////////
 
 Template.duksIndex.helpers({
   lastresult: function () {
-    console.log("searching result");
+    console.log("> In template.helpers lastresult");
     console.log(this);
     node = Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}});
     if (node) {
@@ -381,11 +407,17 @@ Template.duksIndex.helpers({
     } else {
       return "";
     }
+    console.log("< Out template.helpers lastresult");
   },
 });
 
+//////////////////////////////////////////////////////////////////////////////////
+// Meteor events for templates
+//////////////////////////////////////////////////////////////////////////////////
+
 Template.duksIndex.events ({
   'click .delete-duk': function(e) {
+    console.log("> In template.events click delete-duk");
     e.preventDefault();
     var item = this;
 
@@ -393,11 +425,13 @@ Template.duksIndex.events ({
       Duks.remove(item._id);
       console.log("Deleted!")
     }
+    console.log("< Out template.events click delete-duk");
   }
 });
 
 Template.duksIndex.events ({
   'click .add-duk': function(e) {
+    console.log("> In template.events click add-duk");
     e.preventDefault();
     var new_title = "new_duk";
     
@@ -407,5 +441,6 @@ Template.duksIndex.events ({
     else {
       Meteor.call("addEmptyDuk", new_title);
     }
+    console.log("< Out template.events click add-duk");
   }
 });

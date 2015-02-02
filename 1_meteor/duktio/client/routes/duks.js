@@ -11,15 +11,23 @@ Router.map(function() {
     path: '/duks',
     waitOn: function () {
       // TODO: can probably do this with promises
-        return [Meteor.subscribe('logs'),
-               Meteor.subscribe('duks'),
-               Meteor.subscribe('edges'),
-               ];
+        return [  Meteor.subscribe('logs'),
+                  Meteor.subscribe('duks', function onReady(){
+                    // Need to wait for the nodes, before drawing the edges
+                    Meteor.subscribe('edges')
+                  }),
+                ];
     },
     data: function () {
       return {
         duks: Duks.find({}, {sort: {createdAt: -1}}),  // logs: Logs.find({}, {sort: {createdAt: -1}});
       }
+    },
+    onStop: function () {
+        console.log("> In router.duks onStop");
+        if (duks_observe_handle) duks_observe_handle.stop();
+        if (edges_observe_handle) edges_observe_handle.stop();
+        console.log("< Out router.duks onStop");
     }
   });
 
