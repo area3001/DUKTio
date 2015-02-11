@@ -124,10 +124,10 @@ assert(db:connect('localhost:81'))
       	  pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
         end
 
-	print("pcall_rc")
-	pretty.dump(pcall_rc)
-	print("result_or_err_msg")
-	pretty.dump(result_or_err_msg)
+	-- print("pcall_rc")
+	-- pretty.dump(pcall_rc)
+	-- print("result_or_err_msg")
+	-- pretty.dump(result_or_err_msg)
       
         -- write the result or error to the DB 
         if pcall_rc then
@@ -137,9 +137,9 @@ assert(db:connect('localhost:81'))
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-          print(query)
+          -- print(query)
           assert(db:insert('meteor.logs', query)) 
-          print("GOOD!")
+          print("pcall ok")
         else 
           -- error
           -- TODO: make the substitution in function call sanitize() and call where needed
@@ -150,7 +150,7 @@ assert(db:connect('localhost:81'))
               '"userId": "' .. dukt.userId .. '"}'
           assert(db:insert('meteor.logs', query))
           print(result_or_err_msg)
-          print("eBAD!") 
+          print("pcall failed")
         end 
       end
     end

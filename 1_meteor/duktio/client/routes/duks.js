@@ -9,6 +9,9 @@ Router.map(function() {
   this.route('duksIndex', {
     template: 'duksIndex',
     path: '/duks',
+    onBeforeAction: function () {
+      AccountsEntry.signInRequired(this);
+    },
     waitOn: function () {
       // TODO: can probably do this with promises
         return [  Meteor.subscribe('logs'),
@@ -24,10 +27,12 @@ Router.map(function() {
       }
     },
     onStop: function () {
+      if (Meteor.user()) {
         console.log("> In router.duks onStop");
         if (duks_observe_handle) duks_observe_handle.stop();
         if (edges_observe_handle) edges_observe_handle.stop();
         console.log("< Out router.duks onStop");
+      };
     }
   });
 

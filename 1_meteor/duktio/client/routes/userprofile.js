@@ -4,7 +4,7 @@
 
 Router.map(function() {
 
-  // DUKS INDEX
+  // Works with https://github.com/Differential/accounts-entry
   // -------------------------------------------------------
   this.route('profile', {
     template: 'profile',

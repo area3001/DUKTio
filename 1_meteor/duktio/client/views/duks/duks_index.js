@@ -99,9 +99,10 @@ Template.duksIndex.rendered = function() {
           (event.id) && (event.id.indexOf("graph_node_" == 0))) {
         // Graph node changed, need to store it
         console.log(". Graph nodes changed");
-        db_node = {_id: event.attributes.orig.db_orig._id , graph: {position: event.attributes.position, z: event.attributes.z}};
-        console.log(".. calling Meteor.addEdge");
-        lazyMeteorCall("saveDuk", db_node);
+        db_node = {_id: event.attributes.orig.db_orig._id, graph: {position: event.attributes.position, z: event.attributes.z}};
+        console.log(".. calling Meteor.saveDuk");
+        console.log(db_node);
+        // lazyMeteorCall("saveDuk", db_node);
       }
       if ((event.attributes) && (event.attributes.type == 'link') &&
           (event.attributes.source) && (event.attributes.source.port) &&

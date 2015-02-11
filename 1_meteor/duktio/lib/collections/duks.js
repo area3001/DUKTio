@@ -235,11 +235,16 @@ Meteor.methods({
       throw new Meteor.Error("not-authorized");
     }
 
+    //overwrite the user's subdomain on the duk
+    doc.subdomain = Meteor.user().profile.subdomain;
+
     // Important server-side check for security and data integrity
     // check(doc, DukSchema);
     check({"_id": doc._id}, IdPresentSchema);
 
+    // TODO: check if the name of the duk you want to save is unique (otherwise saving over other duk)
     duk_to_save = Duks.findOne({_id: doc._id, userId: Meteor.userId()});
+    var old_duk_name = duk_to_save.name;
 
     if (duk_to_save) {
       console.log("Saving your Dukt");
@@ -260,6 +265,33 @@ Meteor.methods({
           values_to_update
         }
       )
+
+      // if doc.name was updated, we need to update the edges collection too
+      if (old_duk_name !== doc.name) {
+        // Update any endpoints in edges that reference this node
+        var old_duk_name_reg_ex =  '^' + doc.subdomain + "\\." + old_duk_name + "\\.";
+        cursor = Edges.find({ endpoints: { $regex: old_duk_name_reg_ex} });
+        cursor.forEach(function(edge_to_update) { 
+          var old_endpoints = edge_to_update.endpoints;
+          var new_endpoints = old_endpoints.map(function(x){
+              return x.replace(doc.subdomain + "." + old_duk_name + ".", doc.subdomain + "." + doc.name + ".");
+          });
+          Edges.update({_id: edge_to_update._id}, {$set: {endpoints: new_endpoints}});
+        });
+
+        // Update any edges that reference this node
+        var cursor = Edges.find({ _id: { $regex: old_duk_name_reg_ex} });
+        cursor.forEach(function(edge_to_update) {
+          var old_edge_id = edge_to_update._id;
+          var new_edge_id = old_edge_id.replace(doc.subdomain + "." + old_duk_name + ".", doc.subdomain + "." + doc.name + ".");
+          Edges.remove({_id: old_edge_id});
+          Edges.insert({_id: new_edge_id, endpoints: edge_to_update.endpoints});
+        });
+
+      }
+
+
+
     }
   },
   deleteDuk: function (DukId) {

@@ -14,17 +14,26 @@
       <div class="navbar-collapse collapse">
         <ul class="nav navbar-nav">
           <li class="{{active 'frontpage'}}"><a href="{{pathFor 'frontpage'}}">Home</a></li>
-          <li class="{{active 'duksIndex'}}"><a href="{{pathFor 'duksIndex'}}">Duks</a></li>
-          {{#with currentUser}}
+          {{#if currentUser}} 
+            <li class="{{active 'duksIndex'}}"><a href="{{pathFor 'duksIndex'}}">Duks</a></li>
+          {{/if}}            
+<!--           {{#with currentUser}}
             <li class="{{active 'profile'}}"><a href="{{pathFor 'profile' _id}}">Profile</a></li>
-          {{/with}}
+          {{/with}} -->
         </ul>
         <ul class="nav navbar-nav navbar-right">
           <li class="{{active 'about'}}"><a href="{{pathFor 'about'}}">About</a></li>
           <!-- For guest accounts, check: https://github.com/artwells/meteor-accounts-guest --> 
-          <li>
-            {{> loginButtons align='right'}}
-          </li>
+          {{#if currentUser}}  
+            {{#with currentUser}}
+              <li class="{{active 'profile'}}"><a href="{{pathFor 'profile' _id}}">Profile</a></li>
+            {{/with}}
+            <li><a href="/sign-out">Sign Out</a></li>
+          {{else}}
+            <!-- {{> loginButtons align='right'}} -->
+            <!-- {{> accountButtons}} -->
+            <li><a href="/sign-in">Sign In</a></li>
+          {{/if}}
         </ul>
       </div><!--/.nav-collapse -->
     </div>
