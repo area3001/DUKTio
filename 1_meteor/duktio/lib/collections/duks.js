@@ -94,7 +94,7 @@ DukSchema = new SimpleSchema({
   updatedAt: {
     type: Date,
     optional: true,
-    denyInsert: true,
+    denyInsert: false,
     autoValue: function() {
       if (this.isUpdate) {
         return new Date();
@@ -195,10 +195,8 @@ Meteor.methods({
       Notifications.error('Authorization Error', 'Please login to create a Duk');
       throw new Meteor.Error("not-authorized");
     }
-    // Important server-side check for security and data integrity
-    check(doc, DukSchema);
-    
-    Duks.insert({
+
+    doc_to_insert = {
       userId: Meteor.userId(),
       authorId: Meteor.userId(),
       name: doc.name,
@@ -206,8 +204,14 @@ Meteor.methods({
       pathname: doc.pathname,
       code: doc.code,
       createdAt: new Date(),
-      enabled: true
-    });
+      enabled: true,
+      graph: doc.graph
+    };
+    console.log(doc_to_insert);
+    
+    // check for schema and insert
+    check(doc_to_insert, DukSchema);
+    Duks.insert(doc_to_insert);
   },
   addEmptyDuk: function (new_title) {
     // TODO: check security (call clean or cleanschema)
@@ -221,7 +225,7 @@ Meteor.methods({
       userId: Meteor.userId(),
       authorId: Meteor.userId(),
       name: new_title,
-      // subdomain: "",
+      subdomain: Meteor.user().profile.subdomain,
       // pathname: "",
       // code: doc.code,
       createdAt: new Date(),
@@ -243,11 +247,10 @@ Meteor.methods({
     check({"_id": doc._id}, IdPresentSchema);
 
     // TODO: check if the name of the duk you want to save is unique (otherwise saving over other duk)
-    duk_to_save = Duks.findOne({_id: doc._id, userId: Meteor.userId()});
-    var old_duk_name = duk_to_save.name;
+    var duk_to_save = Duks.findOne({_id: doc._id, userId: Meteor.userId()});
 
     if (duk_to_save) {
-      console.log("Saving your Dukt");
+      console.log("Saving existing Dukt");
 
       var values_to_update = {
           name:doc.name, 
@@ -259,39 +262,14 @@ Meteor.methods({
           output_ports: doc.output_ports,
         };
 
-      // call the mongo update
+      // call the mongo update, $set makes sure it isn't just replaced but updated
       Duks.update(
         duk_to_save._id, {$set: 
           values_to_update
         }
       )
-
-      // if doc.name was updated, we need to update the edges collection too
-      if (old_duk_name !== doc.name) {
-        // Update any endpoints in edges that reference this node
-        var old_duk_name_reg_ex =  '^' + doc.subdomain + "\\." + old_duk_name + "\\.";
-        cursor = Edges.find({ endpoints: { $regex: old_duk_name_reg_ex} });
-        cursor.forEach(function(edge_to_update) { 
-          var old_endpoints = edge_to_update.endpoints;
-          var new_endpoints = old_endpoints.map(function(x){
-              return x.replace(doc.subdomain + "." + old_duk_name + ".", doc.subdomain + "." + doc.name + ".");
-          });
-          Edges.update({_id: edge_to_update._id}, {$set: {endpoints: new_endpoints}});
-        });
-
-        // Update any edges that reference this node
-        var cursor = Edges.find({ _id: { $regex: old_duk_name_reg_ex} });
-        cursor.forEach(function(edge_to_update) {
-          var old_edge_id = edge_to_update._id;
-          var new_edge_id = old_edge_id.replace(doc.subdomain + "." + old_duk_name + ".", doc.subdomain + "." + doc.name + ".");
-          Edges.remove({_id: old_edge_id});
-          Edges.insert({_id: new_edge_id, endpoints: edge_to_update.endpoints});
-        });
-
-      }
-
-
-
+    } else {
+      Meteor.call("addDuk", doc);
     }
   },
   deleteDuk: function (DukId) {
@@ -302,11 +280,190 @@ Meteor.methods({
     } 
     Duks.remove(DukId);
   },
-  // toggle_enable: function (DukId, toggle_enabled) {
-  //   var Duk = Duks.findOne(DukId);
-  //   if (Duk.private && Duk.owner !== Meteor.userId()) {
-  //     throw new Meteor.Error("not-authorized");
-  //   }
-  //   Duks.update(DukId, { $set: { enabled: toggle_enabled} });
-  // },
+  saveGraphToServer: function (graphInJSON) {
+    // graphInJSON should look like;
+    // [
+    // {
+    //   "position": {
+    //     "x": 303,
+    //     "y": 47
+    //   },
+    //   "type": "devs.Model",
+    //   "inPorts": [
+    //     "greeting"
+    //   ],
+    //   "outPorts": [
+    //     "test"
+    //   ],
+    //   "angle": 0,
+    //   "z": 3,
+    //   "id": "dbf523da-da3a-4a0a-88c9-9fedfdfd72ac",
+    //   "orig": {
+    //     "db_orig": {
+    //       "authorId": "PfugxK9Bpnof6w2fB",
+    //       "code": "local data = {hi = message.msg.query.hi}\nsend_out(\"test\", data)\nreturn \"ok\"",
+    //       "createdAt": "2015-01-08T20:09:51.007Z",
+    //       "enabled": true,
+    //       "graph": {
+    //         "position": {
+    //           "x": 303,
+    //           "y": 47
+    //         },
+    //         "z": 3
+    //       },
+    //       "inputPorts": [
+    //         "MyGreatPort"
+    //       ],
+    //       "name": "greetingnode",
+    //       "output_ports": [
+    //         "test"
+    //       ],
+    //       "pathname": "greeting",
+    //       "subdomain": "paularmand",
+    //       "updatedAt": "2015-02-11T22:29:53.051Z",
+    //       "userId": "PfugxK9Bpnof6w2fB",
+    //       "_id": "S5cXzy7mgTfBQ4tPs"
+    //     },
+    //     "name": "greetingnode",
+    //     "subdomain": "paularmand",
+    //     "pathname": "greeting",
+    //     "output_ports": [
+    //       "test"
+    //     ],
+    //     "position": {
+    //       "x": 303,
+    //       "y": 47
+    //     },
+    //     "z": 3
+    //   },
+    //   "attrs": {
+    //     "rect": {
+    //       "fill": "#559ce9"
+    //     },
+    //     ".inPorts circle": {
+    //       "fill": "black",
+    //       "type": "no-input"
+    //     },
+    //     ".delete-node-circle": {
+    //       "graph_node_id": "graph_node_greetingnode"
+    //     },
+    //     "text": {
+    //       "fill": "white",
+    //       "text": "greetingnode",
+    //       "font-size": 14
+    //     },
+    //     ".port-label": {
+    //       "fill": "black",
+    //       "font-size": 16,
+    //       "dy": "-7"
+    //     },
+    //     ".inPorts>.port0>.port-label": {
+    //       "text": "greeting"
+    //     },
+    //     ".inPorts>.port0>.port-body": {
+    //       "port": {
+    //         "id": "greeting",
+    //         "type": "in"
+    //       }
+    //     },
+    //     ".inPorts>.port0": {
+    //       "ref": ".body",
+    //       "ref-y": 0.5
+    //     },
+    //     ".outPorts>.port0>.port-label": {
+    //       "text": "test"
+    //     },
+    //     ".outPorts>.port0>.port-body": {
+    //       "port": {
+    //         "id": "test",
+    //         "type": "out"
+    //       }
+    //     },
+    //     ".outPorts>.port0": {
+    //       "ref": ".body",
+    //       "ref-y": 0.5,
+    //       "ref-dx": 0
+    //     }
+    //   }
+    // },
+    // {
+    //   "type": "link",
+    //   "source": {
+    //     "id": "graph_node_greetingnode",
+    //     "port": "test"
+    //   },
+    //   "target": {
+    //     "id": "graph_node_undefined",
+    //     "port": "3"
+    //   },
+    //   "id": "87b52520-cefa-4cff-9b5a-552ab2c639e2",
+    //   "orig": {
+    //     "id": "paularmand.greetingnode.out.test",
+    //     "target": "undefined"
+    //   },
+    //   "prev_link_source": {
+    //     "id": "graph_node_greetingnode"
+    //   },
+    //   "prev_link_target": {
+    //     "id": "graph_node_undefined"
+    //   },
+    //   "z": 15,
+    //   "attrs": {}
+    // }
+    // ]
+
+    console.log("in meteor.methods.saveGraphToServer");
+
+    // delete all edges in the subdomain
+    var subdomain_regexp = '^' + Meteor.user().profile.subdomain + "\..*$";
+    Edges.remove({ "_id": { $regex: subdomain_regexp} })
+
+    // delete all nodes in this subdomain
+    // Duks.remove({ "subdomain": Meteor.user().profile.subdomain} );
+
+    // loop over all the cells and store the nodes
+    var nr_cells = graphInJSON.length;
+    for (var ii = 0; ii < nr_cells; ii++) {
+        cell = graphInJSON[ii];
+        // Store the nodes (meaning == dev.Model type)
+        if (cell["type"] == "devs.Model") {
+            // transform the json
+            node_to_add = 
+              { "_id" : cell.orig.db_orig._id, 
+                "authorId" : cell.orig.db_orig.authorId, 
+                "code" : cell.orig.db_orig.code,
+                "createdAt" : cell.orig.db_orig.createdAt,
+                "enabled" : true,
+                "graph" : { "position" : { "x" : cell.position.x, "y" : cell.position.y }, "z" : cell.z },
+                "input_ports" : cell.inPorts,  // ["greeting", ... ],
+                "output_ports" : cell.outPorts,  // ["myoutput", ... ],
+                "name" : cell.orig.db_orig.name,
+                "subdomain" : Meteor.user().profile.subdomain,
+                "updatedAt" : new Date(),
+                "userId" : Meteor.userId() 
+              }
+            // save the node
+            Meteor.call("saveDuk", node_to_add);
+        }
+    }
+
+    // loop over all the cells and store the edges
+    var nr_cells = graphInJSON.length;
+    for (var ii = 0; ii < nr_cells; ii++) {
+        cell = graphInJSON[ii];
+        // Store the nodes (meaning == link type)
+        if (cell["type"] == "link") {
+            // transform the json
+            var link_from =  Meteor.user().profile.subdomain + "." + cell.source.id.substring('graph_node_'.length) + ".out." + cell.source.port;
+            var link_to =  Meteor.user().profile.subdomain + "." + cell.target.id.substring('graph_node_'.length) + ".in." + cell.target.port;
+            link_to_save = 
+              { "source" : link_from,
+                "target" : link_to
+              }
+              
+            // save the node
+            Meteor.call("addEdge", link_to_save);
+        }
+    }
+  }
 });

@@ -81,4 +81,16 @@ Meteor.methods({
     };
     console.log("< Out meteor.methods.deleteEdge");
   },
+  deleteAllEdgesforaSource: function (link_to_delete) {
+    console.log("> In meteor.methods.deleteAllEdgesforaSource");
+    console.log(link_to_delete);
+    var edge_to_delete = Edges.findOne({_id: link_to_delete.source});  //TODO: need to add userid
+
+    if (edge_to_delete) {
+      Edges.remove(
+        {_id: link_to_delete.source}
+      );
+    };
+    console.log("< Out meteor.methods.deleteAllEdgesforaSource");
+  }
 });
