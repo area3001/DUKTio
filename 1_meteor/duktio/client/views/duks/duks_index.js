@@ -201,6 +201,31 @@ function new_links(db_edge) {
   return links;
 };
 
+function load_graph () {
+  console.log("> In load graph");
+  // do the load for each node
+  var cursor = Duks.find();
+  cursor.forEach(function (row) {
+      var graph_node = new_graph_node(create_node(row));
+      console.log(graph_node);
+      graph.addCells([graph_node]);
+  }); 
+
+  // do the load for each link
+  var cursor = Edges.find();
+  cursor.forEach(function (row) {
+      var links = new_links(row);
+      graph.addCells(links);
+  });
+  console.log("< Out load graph");
+};
+
+function reload_graph () {
+  graph.clear();
+  load_graph();
+};
+
+
 //////////////////////////////////////////////////////////////////////////////////
 // On iron router rendering 
 //////////////////////////////////////////////////////////////////////////////////
@@ -292,6 +317,9 @@ Template.duksIndex.rendered = function() {
       console.log("< Out graph.on add");
   });
 
+  load_graph();
+
+
   // // Catch the delete and linking events 
   // graph.on('change', function(event, cell) {
   //     console.log("> In graph.on changed");
@@ -378,18 +406,20 @@ Template.duksIndex.rendered = function() {
 
   // observe the reactive datasource to add nodes and links to the graph
   duks_observe_handle = Duks.find().observe({
-      // added: function (doc) {
-      //   console.log("> In duks.find observe.added");
+      added: function (doc) {
+        console.log("> In duks.find observe.added");
       //   var new_node = create_node(doc);
       //   var graph_node = new_graph_node(new_node);
       //   graph.addCells([graph_node]);
-      //   console.log("< Out duks.find observe.added");
-      // },
-      // removed: function (doc) {
-      //   console.log("> In duks.find observe.removed");
+        // load_graph();
+        console.log("< Out duks.find observe.added");
+      },
+      removed: function (doc) {
+        console.log("> In duks.find observe.removed");
       //   if (doc) graph.getCell("graph_node_" + doc.name).remove();
-      //   console.log("< Out duks.find observe.removed");
-      // }
+        // reload_graph();
+        console.log("< Out duks.find observe.removed");
+      }
     });
 
   edges_observe_handle = Edges.find().observe({
@@ -453,7 +483,8 @@ Template.duksIndex.events ({
 
     if (confirm("Are you sure?")) {
       Duks.remove(item._id);
-      console.log("Deleted!")
+      // Meteor.call("saveGraphToServer", graph.toJSON().cells);
+      reload_graph();
     }
     console.log("< Out template.events click delete-duk");
   },
@@ -467,6 +498,8 @@ Template.duksIndex.events ({
     }
     else {
       Meteor.call("addEmptyDuk", new_title);
+      // Meteor.call("saveGraphToServer", graph.toJSON().cells);
+      reload_graph();
     }
     console.log("< Out template.events click add-duk");
   },
@@ -479,22 +512,9 @@ Template.duksIndex.events ({
   'click .load-graph': function(e) {
     console.log("> In template.events click load-graph");
     e.preventDefault();
-    graph.clear();
 
-    // do the load for each node
-    var cursor = Duks.find();
-    cursor.forEach(function (row) {
-        var graph_node = new_graph_node(create_node(row));
-        console.log(graph_node);
-        graph.addCells([graph_node]);
-    }); 
+    reload_graph();
 
-    // do the load for each link
-    var cursor = Edges.find();
-    cursor.forEach(function (row) {
-        var links = new_links(row);
-        graph.addCells(links);
-    }); 
     console.log("< Out template.events click load-graph");
   } 
 });

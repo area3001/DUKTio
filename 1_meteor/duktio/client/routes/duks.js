@@ -13,12 +13,9 @@ Router.map(function() {
       AccountsEntry.signInRequired(this);
     },
     waitOn: function () {
-      // TODO: can probably do this with promises
         return [  Meteor.subscribe('logs'),
-                  Meteor.subscribe('duks', function onReady(){
-                    // Need to wait for the nodes, before drawing the edges
-                    Meteor.subscribe('edges')
-                  }),
+                  Meteor.subscribe('duks'),
+                  Meteor.subscribe('edges')
                 ];
     },
     data: function () {

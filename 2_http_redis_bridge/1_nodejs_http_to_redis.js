@@ -12,7 +12,7 @@ var server = http.createServer(function (request, response) {
   console.log("##############################################");
 
   response.writeHead(200, {"Content-Type": "text/plain"});
-  response.end("Got it!\n");
+  response.end('{status: "ok"}\n');
   
   // stop the favicon request
   if (request.url == "/favicon.ico") return 0;
@@ -42,7 +42,7 @@ var server = http.createServer(function (request, response) {
   });
   client.rpush("message_list", message);
 
-  // quit, but wait for the redis reply 
+  // quit, but wait for the redis reply
   client.quit();  // TODO: Check whether client.end() which doesn't wait for the redis reply isn't a better option (higher throughput?)
 
 });

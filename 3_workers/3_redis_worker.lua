@@ -37,7 +37,8 @@ local sandbox_env = {
       rad = math.rad, random = math.random, sin = math.sin, sinh = math.sinh, 
       sqrt = math.sqrt, tan = math.tan, tanh = math.tanh },
   os = { clock = os.clock, difftime = os.difftime, time = os.time },
-  print = print,  -- TODO: need to disable this security-wise 
+  print = print,  -- TODO: need to disable this security-wise
+  pretty = pretty
 }
 
 
@@ -89,46 +90,176 @@ assert(db:connect('localhost:81'))
           },
           msg = msg,
         }
-	-- encode and send to redis queue
+	      -- encode and send to redis queue
         pretty.dump(message)
-	message = cjson_safe.encode(message)
+	      message = cjson_safe.encode(message)
         print ("In send_out: queuing msg")
         redis_conn:rpush('message_list', message)
         print ("In send_out: msg queued succesfully")
       end
       
-      -- disable the sandbox for system dukts
-      -- also add the DBes, and whatever you need (you can't access local variables in the global scope)
-      if subdomain == 'system' then
-        print("system sandbox")
-        sandbox_env_full = e -- hence no sandbox
-        sandbox_env_full.mongo_conn = db
-        sandbox_env_full.redis_conn = redis_conn
-        sandbox_env_full.pretty = pretty
-        sandbox_env_full.message = message_table
-        sandbox_env_full.cjson = cjson_safe
-       else
-        -- add the msg to the sandbox
-        print("user sandbox")
-        sandbox_env.msg = message_table.msg
-        sandbox_env.send_out= send_out
+      function email_send(to, subject, text, config)
+      -- http://stackoverflow.com/questions/11070623/lua-send-mail-with-gmail-account
+        -- email.send ({
+        --   to='<TO_ADDRESS>',
+        --   subject='Received payment',
+        --   text='Amount: $'..(object.amount/100)
+        --   config = {smtp='<SMTP SERVER>', 
+        --             username='<SMTP USERNAME>',
+        --             password='<SMTP PASSWORD>',
+        --             from='<FROM_ADDRESS>',
+        --             port='<SMTP PORT>' 
+        --             },
+        --   })
+
+        -- TODO: Need thorough argument checking here
+        -- TODO: If config is empty, get the email.config settings
+
+        local socket = require 'socket'
+        local smtp = require 'socket.smtp'
+        local ssl = require 'ssl'
+        local https = require 'ssl.https'
+        local ltn12 = require 'ltn12'
+
+        function sslCreate()
+            local sock = socket.tcp()
+            return setmetatable({
+                connect = function(_, host, port)
+                    local r, e = sock:connect(host, port)
+                    if not r then return r, e end
+                    sock = ssl.wrap(sock, {mode='client', protocol='tlsv1'})
+                    return sock:dohandshake()
+                end
+            }, {
+                __index = function(t,n)
+                    return function(_, ...)
+                        return sock[n](sock, ...)
+                    end
+                end
+            })
+        end
+
+        function sendMessage(to, subject, body, config)
+            local msg = {
+                headers = {
+                    to = to,
+                    subject = subject
+                },
+                body = body
+            }
+
+            local ok, err = smtp.send {
+                from = "<" .. config.from .. ">",
+                rcpt = "<" .. to .. ">",
+                source = smtp.message(msg),
+                user = config.username,
+                password = config.password,
+                server = config.smtp,
+                port = config.port,
+                create = sslCreate
+            }
+
+            pretty.dump(config)
+            pretty.dump(msg)
+
+            if not ok then
+                print("Mail send failed", err) -- better error handling required
+            end
+        end
+
+        sendMessage(to, subject, text, config)
+
+        print(ok)
+        print(err)
+
+        -- TODO: Need our own error handling
+        return ok, err
+      end
+
+      -- dukt_storage for persistant local state to this node 
+      dukt_storage_mt = {
+        __index = function (_, k)
+          -- retrieve the storage field in the dukt document
+          local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. nodename .. '"}'
+          local q = assert(db:query('meteor.duks', query))
+          local dukt = q:next()
+          if dukt then return dukt[k] end
+          return nil
+        end,
+        __newindex = function (_, k, v)
+          -- store the storage field in the dukt document
+          local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. nodename .. '"}'
+          -- {$set: {k: v}}
+          local json_update = {["$set"] = {}}
+          json_update["$set"][k] = v
+          -- update(namespace, query, modifier, upsert, multi)
+          return db:update('meteor.duks', query, json_update, true, false)
+        end
+      } 
+
+      dukt_storage = {}
+      dukt_storage.__metatable = "A wise man once wrote: not your business"
+
+      setmetatable(dukt_storage, dukt_storage_mt)
+
+
+      function sandbox_http (url) 
+        -- url – The target URL, including scheme, e.g. http://example.com
+        -- method (optional, default is "GET") – The HTTP verb, e.g. GET or POST
+        -- data (optional) – Either a string (the raw bytes of the request body) or a table (converted to form POST parameters)
+        -- params (optional) – A table that's converted into query string parameters. E.g. {color="red"} becomes ?color=red
+        -- auth (optional) – Two possibilities:
+        -- auth={'username', 'password'} means to use HTTP basic authentication
+        -- auth={oauth={consumertoken='...', consumersecret='...', accesstoken='...', tokensecret='...'}} means to sign the request with OAuth. Only consumertoken and consumersecret are required (e.g. for obtaining a request token)
+        -- headers (optional) – A table of the request header key/value pairs
+
+        -- A call to http.request returns a table with the following fields:
+        -- content – The raw bytes of the HTTP response body, after being decoded if necessary according to the response's Content-Encoding header.
+        -- statuscode – The numeric status code of the HTTP response
+        -- headers – A table of the response's headers
+        local http = require("socket.http")
+
+        -- using the simple http request method for now, see http://w3.impa.br/~diego/software/luasocket/http.html
+        return http.request(url)
+
       end
 
       -- this block executes system as well as userland dukts
       if dukt then
-	local script = dukt.code
-        local pcall_rc, result_or_err_msg
+
+        -- disable the sandbox for system dukts
+        -- also add the DBes, and whatever you need (you can't access local variables in the global scope)
         if subdomain == 'system' then
-      	  pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
-        else
-      	  pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
+          print("system sandbox")
+          sandbox_env_full = e -- hence no sandbox
+          sandbox_env_full.mongo_conn = db
+          sandbox_env_full.redis_conn = redis_conn
+          sandbox_env_full.pretty = pretty
+          sandbox_env_full.message = message_table
+          sandbox_env_full.cjson = cjson_safe
+          sandbox_env_full.storage = dukt_storage
+          sandbox_env_full.http = {}
+          sandbox_env_full.http.request = sandbox_http
+         else
+          -- add the msg to the sandbox
+          print("user sandbox")
+          sandbox_env.msg = message_table.msg
+          sandbox_env.send_out = send_out
+          sandbox_env.email = {}
+          sandbox_env.email.send = email_send
+          sandbox_env.storage = dukt_storage
+          sandbox_env.http = {}
+          sandbox_env.http.request = sandbox_http
         end
 
-	-- print("pcall_rc")
-	-- pretty.dump(pcall_rc)
-	-- print("result_or_err_msg")
-	-- pretty.dump(result_or_err_msg)
-      
+	      local script = dukt.code
+        local pcall_rc, result_or_err_msg
+        if subdomain == 'system' then
+      	   pcall_rc, result_or_err_msg = run_sandbox(sandbox_env_full, script, dukt.name)
+        else
+           pcall_rc, result_or_err_msg = run_sandbox(sandbox_env, script, dukt.name)
+        end
+
         -- write the result or error to the DB 
         if pcall_rc then
           -- success
