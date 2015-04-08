@@ -80,6 +80,27 @@ assert(db:connect('localhost:81'))
       local dukt = q:next()
 
       -- define send_out as a closure (using upvalues subdomain and nodename)
+      function call_node(node_identifier, msg)
+        -- route message to system router dukt
+        -- TODO: sanity check on portid
+        local message = {
+          routing = {
+            to = 'system.router.in.endpoint',
+            from = subdomain .. "." .. nodename .. "." .. "out" .. "." .. portid
+          },
+          msg = msg,
+        }
+        -- encode and send to redis queue
+        pretty.dump(message)
+        message = cjson_safe.encode(message)
+        print ("In send_out: queuing msg")
+        redis_conn:rpush('message_list', message)
+        print ("In send_out: msg queued succesfully")
+
+        return
+      end
+
+      -- define send_out as a closure (using upvalues subdomain and nodename)
       function send_out(portid, msg)
         -- route message to system router dukt
         -- TODO: sanity check on portid

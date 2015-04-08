@@ -61,7 +61,14 @@ DukSchema = new SimpleSchema({
     type: String,
     label: "Code",
     max: 10000,
-    optional: true
+    optional: true,
+    autoform: {
+      afFieldInput: {
+        type: 'af_codemirror',
+        class: 'editor', // optional
+        valueIn: "Hi from schema thingy"
+      }
+    }
   },
   enabled: {
     type: Boolean,

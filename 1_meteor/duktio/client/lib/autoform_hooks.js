@@ -23,3 +23,9 @@ AutoForm.addHooks(['dukForm', "dukNew"], {
   }
 });
 
+AutoForm.addInputType('af_codemirror', {
+  template: 'af_codemirror',
+  valueOut: function() {
+    return this.code();
+  }
+});

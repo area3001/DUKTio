@@ -423,6 +423,7 @@ Template.duksIndex.rendered = function() {
     });
 
   edges_observe_handle = Edges.find().observe({
+      
       // source was added 
       // added: function (db_edge) { 
       //   console.log("> In edges.find observe.added");

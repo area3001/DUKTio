@@ -6,7 +6,20 @@ Meteor.publish('logs', function() {
 	  // TODO: security
 	  // check(this.userId, String);  // Meteor.Collection.ObjectID);
     // console.log("")
-    return Logs.find({
-     userId: this.userId
-    });
+
+    return false;
+
+    // return Logs.find({
+    //   userId: this.userId,
+    //   Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}});
+    // });
+
+		// https://github.com/meteorhacks/meteor-aggregate/issues/8
+		// http://ask.ttwait.com/que/26861070
+    // return Logs.aggregate([{$sort: {createdAt: -1}},
+				// 							     {$group: {
+				// 						           _id: "$ref_webhook",
+				// 						           lastresult: { $last: "$createdAt" }
+				// 							       }
+				// 							     }])
 });
