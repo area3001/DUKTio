@@ -283,24 +283,44 @@ assert(db:connect('localhost:81'))
 
         -- write the result or error to the DB 
         if pcall_rc then
-          -- success
+          -- Write succes in the logs
           result_or_err_msg = result_or_err_msg or ""
           query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-          -- print(query)
           assert(db:insert('meteor.logs', query)) 
+
+          -- write success in the lastlogs
+          query_remove = '{"ref_dukt": "' .. dukt._id  .. '"}'
+          query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
+              '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
+              '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
+              '"userId": "' .. dukt.userId .. '"}'
+
+          assert(db:remove('meteor.lastlogs', query_remove))
+          assert(db:insert('meteor.lastlogs', query))
           print("pcall ok")
         else 
-          -- error
+          -- Write fail in the logs
           -- TODO: make the substitution in function call sanitize() and call where needed
           result_or_err_msg = result_or_err_msg or ""
           query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-          assert(db:insert('meteor.logs', query))
+          assert(db:insert('meteor.logs', query))   
+
+          -- Write fail for lastlog
+          query_remove = '{"ref_dukt": "' .. dukt._id ..'"}'
+          query = '{"ref_dukt": "' .. dukt._id  .. '", ' ..
+              '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
+              '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
+              '"userId": "' .. dukt.userId .. '"}'
+       
+          assert(db:remove('meteor.lastlogs', query_remove))
+          assert(db:insert('meteor.lastlogs', query))
+
           print(result_or_err_msg)
           print("pcall failed")
         end 

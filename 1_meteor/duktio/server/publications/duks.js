@@ -3,8 +3,8 @@
 // DUKS INDEX
 // -------------------------------------------------------
 Meteor.publish('duks', function() {
-	  // TODO: security
-		// check(this.userId, String);  // Meteor.Collection.ObjectID);
+    // TODO: security
+	// check(this.userId, String);  // Meteor.Collection.ObjectID);
     return Duks.find({userId: this.userId});
 });
 
@@ -15,7 +15,7 @@ Meteor.publish('duk', function(id) {
 	  // check(this.userId, String);  // Meteor.Collection.ObjectID);
     // console.log("")
     return Duks.find({
-     // owner: this.userId,
-     _id: id
+      userId: this.userId,
+      _id: id
     });
 });

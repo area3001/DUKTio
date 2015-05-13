@@ -79,7 +79,7 @@ function new_graph_node(node) {
       attrs: {
           'text': { text: node.get_name(), fill: 'white', 'font-size': 14},    // See external ccs to overwrite bootstrap external css
           '.delete-node-circle': { fill: 'red', graph_node_id: node.get_graph_name()},
-          '.port-label': {fill: 'black', 'font-size': 16, dy: "-7"}, 
+          '.port-label': {fill: 'black', 'font-size': 16, dy: "-7"},
       },
       inPorts: node.get_input_ports() || [],
       outPorts: node.get_output_ports() || [],
@@ -92,6 +92,7 @@ function new_graph_node(node) {
     new_node.attr('text/fill', 'white');
     new_node.set('inPorts', [node.get_pathname()]);
     new_node.attr('.inPorts circle', { fill: 'black', type: 'no-input' });
+    
   }
 
   new_node.prop({orig: node});
@@ -462,9 +463,9 @@ Template.duksIndex.helpers({
   lastresult: function () {
     console.log("> In template.helpers lastresult");
     console.log(this);
-    node = Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}});
-    if (node) {
-      return node.result; 
+    last_result = Lastlogs.findOne({ref_dukt: this._id});
+    if (last_result) {
+      return last_result.result;
     } else {
       return "";
     }

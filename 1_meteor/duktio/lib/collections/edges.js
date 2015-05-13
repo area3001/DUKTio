@@ -37,9 +37,11 @@ Meteor.methods({
 
     // If the edge does not exist create it
     var edge_exists = Edges.findOne({_id: doc.source});
+
     if (!edge_exists) {
       Edges.insert({
         _id: doc.source,
+        userId: Meteor.userId(),
         endpoints: [doc.target]
       });
     } else {

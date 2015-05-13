@@ -2,17 +2,14 @@
 
 // LOGS SHOW
 // -------------------------------------------------------
-Meteor.publish('logs', function() {
+Meteor.publish('lastlogs', function() {
 	  // TODO: security
 	  // check(this.userId, String);  // Meteor.Collection.ObjectID);
     // console.log("")
 
-    return false;
+    // return false;
 
-    // return Logs.find({
-    //   userId: this.userId,
-    //   Logs.findOne({ref_dukt: this._id}, {sort: {createdAt: -1}});
-    // });
+    return Lastlogs.find({userId: this.userId});
 
 		// https://github.com/meteorhacks/meteor-aggregate/issues/8
 		// http://ask.ttwait.com/que/26861070

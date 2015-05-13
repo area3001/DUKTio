@@ -13,7 +13,7 @@ Router.map(function() {
       AccountsEntry.signInRequired(this);
     },
     waitOn: function () {
-        return [  // Meteor.subscribe('logs'), disabled since the aggregate in the publish function doesn't work well in Meteor
+        return [  Meteor.subscribe('lastlogs'), //disabled since the aggregate in the publish function doesn't work well in Meteor
                   Meteor.subscribe('duks'),
                   Meteor.subscribe('edges')
                 ];
