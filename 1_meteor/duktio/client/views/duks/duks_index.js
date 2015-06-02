@@ -276,8 +276,9 @@ Template.duksIndex.rendered = function() {
               '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2, 
                           fill: 'white'},  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
               rect: { fill: '#337ab7', rx: 10, ry: 10 },
-              '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input' },
+              '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input'},
               '.outPorts circle': { fill: '#E74C3C', type: 'output' },
+              // '.inPorts .port .port-label': {"xlink:href": "www.google.com"},              
               '.delete-node-circle': { fill: 'red', graph_node_id: "placeholder"},
           }
       }, joint.shapes.devs.Model.prototype.defaults)
@@ -304,9 +305,16 @@ Template.duksIndex.rendered = function() {
       // Attach to node delete button
       $(".delete-node-circle").unbind();  // removing previous click event handlers
       $(".delete-node-circle").click(function(event){
-          // console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
+          console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
       });
+      // Attach to the port 
+      $(".port-label").unbind();
 
+      $(".port-label").click(function(event){
+          console.log("Clicked port" + $(this)[0].innerHTML);
+          url = Meteor.user().profile.subdomain + ".dukt.io:8000/" + $(this)[0].innerHTML;
+          window.open(url,'_blank');
+      });
       ////////////////
       // JUST TESTING SOMETHING HERE< DO NOT KEEP THIS
       // $(".delete-node-circle").magnificPopup({

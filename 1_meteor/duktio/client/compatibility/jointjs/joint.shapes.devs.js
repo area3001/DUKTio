@@ -25,7 +25,7 @@ joint.shapes.devs = {};
 joint.shapes.devs.Model = joint.shapes.basic.Generic.extend(_.extend({}, joint.shapes.basic.PortsModelInterface, {
 
     markup: '<g class="rotatable"><circle class="delete-node-circle set_visible_on_hover" style="display:none" href="#duks_overview_table"/><g class="scalable"><rect class="body"/></g><text class="label"/><g class="inPorts"/><g class="outPorts"/></g>',
-    portMarkup: '<g class="port port<%= id %>"><circle class="port-body"/><text href="www.google.be" class="port-label"/></g>',
+    portMarkup: '<g class="port port<%= id %>"><circle class="port-body"/><text class="port-label"/></g>',
 
     defaults: joint.util.deepSupplement({
 
@@ -47,8 +47,8 @@ joint.shapes.devs.Model = joint.shapes.basic.Generic.extend(_.extend({}, joint.s
                 stroke: 'black'
             },
             text: {
-                fill: 'black',
-                'pointer-events': 'none'
+                fill: 'black' //,
+                //'pointer-events': 'none'
             },
             '.label': { text: 'Model', 'ref-x': .5, 'ref-y': 10, ref: '.body', 'text-anchor': 'middle' },
             '.inPorts .port-label': { x:-15, dy: 4, 'text-anchor': 'end' },
