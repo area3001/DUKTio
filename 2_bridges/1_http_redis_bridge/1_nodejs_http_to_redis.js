@@ -27,6 +27,8 @@ var server = http.createServer(function (request, response) {
     "to": 'system.http.in.httprequest',
   };
 
+  console.log(message);
+  
   // message to JSON
   message = JSON.stringify(message);
   

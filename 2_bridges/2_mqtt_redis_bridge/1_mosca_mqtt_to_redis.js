@@ -37,7 +37,9 @@ server.on('published', function(packet, client) {
   // message: add routing to the Lua system dukt
   message.routing = {
     "to": 'system.mqtt.in.mqttpublish',
-  };  
+  }; 
+
+  console.log(message);
 
   // message to JSON
   message = JSON.stringify(message);
@@ -65,16 +67,7 @@ function setup() {
   console.log('Mosca server is up and running')
 }
 
-  
 function filter_publish(packet_orig) {
-
-  request = {}
-
-  request['topic'] = packet_orig.topic;
-  request['payload'] = packet_orig.payload.toString('utf-8');
-
-  return request;
-}
 
 // // Filters the Request (of type http.IncomingMessage) object values to be passed into the backend message
 // // The following fields are needed: 
@@ -93,12 +86,7 @@ function filter_publish(packet_orig) {
 // // headers – A table of the HTTP request headers. Keys are "train-cased," like Content-Type.
 // // Note: To support Internet Explorer's cross-domain requests using XDomainRequest, if a request has no Content-Type header, an attempt is still made to parse it as application/x-www-form-urlencode.
 
-//   request = {};
-
-//   // original url
-//   var protocol = "http";  // later: via request_orig.socket (http://nodejs.org/api/http.html)
-//   var originalUrl = protocol + '://' + request_orig.headers.host + request_orig.url;
-//   console.log(originalUrl);
+  request = {};
   
 //   // parse the request, "true" indicates also parse the querystring
 //   var req_parsed = liburl.parse(originalUrl, true)
@@ -107,7 +95,7 @@ function filter_publish(packet_orig) {
 //   request['href'] = req_parsed.href;
 
 //   // protocol: The request protocol, lowercased. Example: 'http:'
-//   request['protocol'] = req_parsed.protocol;
+  request['protocol'] = 'mqtt';
 
 //   // host: The full lowercased host portion of the URL, including port information. Example: 'host.com:8080'
 //   request['host'] = req_parsed.host;
@@ -122,13 +110,23 @@ function filter_publish(packet_orig) {
 //   request['port'] = req_parsed.port;
 
 //   // path: The path section of the URL, that comes after the host and before the query, including the initial slash if present. Example: '/p/a/t/h'
-//   request['pathname'] = req_parsed.pathname;
-  
+  var url_pattern = new RegExp('^\/*[a-z0-9_-]*\/(.*)$');
+  var subdomainString = url_pattern.exec(packet_orig.topic);
+  if(!subdomainString) {
+    request['pathname'] = '';
+  }
+  else {
+    request['pathname'] = subdomainString[1];
+  };
+
+  // request['topic'] = packet_orig.topic;
+
 //   // search: The 'query string' portion of the URL, including the leading question mark. Example: '?query=string'
-//   request['search'] = req_parsed.search;
+  // request['payload'] = packet_orig.payload.toString('utf-8');
+  request['search'] = packet_orig.payload.toString('utf-8');
 
 //   // path: Concatenation of pathname and search. Example: '/p/a/t/h?query=string'
-//   request['path'] = req_parsed.path;
+  request['path'] = request['pathname'] + '?' + request['search'];
 
 //   // query: Either the 'params' portion of the query string, or a querystring-parsed object. Example: 'query=string' or {'query':'string'}
 //   request['query'] = req_parsed.query;
@@ -137,7 +135,6 @@ function filter_publish(packet_orig) {
 //   request['hash'] = req_parsed.hash;
   
 //   // Subdomain, TODO: security and optimization
-//   var url_pattern = new RegExp('^([a-z0-9_-]*)\.' + domain_escaped);
 //   var subdomainString = url_pattern.exec(request['hostname']);
 //   if(!subdomainString) {
 //     request['subdomain'] = '';
@@ -145,6 +142,15 @@ function filter_publish(packet_orig) {
 //   else {
 //     request['subdomain'] = subdomainString[1];
 //   };
+
+  var url_pattern = new RegExp('^\/*([a-z0-9_-]*)\/.*$');
+  var subdomainString = url_pattern.exec(packet_orig.topic);
+  if(!subdomainString) {
+    request['subdomain'] = '';
+  }
+  else {
+    request['subdomain'] = subdomainString[1];
+  };
 
 //   // the ipaddress 
 //   request['origin_address'] = (request_orig.headers["X-Forwarded-For"] ||
@@ -178,12 +184,6 @@ function filter_publish(packet_orig) {
 //   // TODO: headers
 //   request['headers'] = null 
 
-//   return request; 
+  return request; 
 
-// }
-
-// // Listen on port 8000, IP defaults to 127.0.0.1
-// server.listen(8000);
-
-// // Put a friendly message on the terminal
-// console.log("Server running at http://127.0.0.1:8000/");
+}

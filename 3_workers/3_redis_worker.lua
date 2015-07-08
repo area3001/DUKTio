@@ -1,6 +1,7 @@
 local REDIS_HOSTNAME = 'localhost' --'5.9.25.67'
 local REDIS_PORT = 6379
 local message_list_name = 'message_list'
+local worker_list_name = 'worker_alive_log'
 local pretty = require 'pl.pretty'  -- penlight.pretty library to print nifty tables
 local utils = require 'pl.utils'  -- penlight.util for  
 local cjson_safe = require "cjson.safe"  -- fast C json decoding
@@ -41,12 +42,20 @@ local sandbox_env = {
   pretty = pretty
 }
 
+local redis = require('redis')
+local redis_conn = redis.connect(REDIS_HOSTNAME, REDIS_PORT)
 
 function run_sandbox(sb_env, sb_func, scriptname, ...)
+  -- log entering into redis hash for this worker (the supervisor needs this)
+  worker_name = arg[1]
+  local message = {start_at=os.time()}
+  message = cjson_safe.encode(message)
+  redis_conn:hset(worker_list_name, worker_name, worker_json)
+
   if (not sb_func) then return nil end
  
   -- TODO: Add sanitization for scriptname
-  local fun, message = load (sb_func, "tmp", "t" , sb_env) -- "t" for tables only 
+  local fun, message = load (sb_func, "tmp", "t" , sb_env) -- "t" for tables only
   if not fun then
     print("In run_sandbox: No function loaded")
     return nil, message
@@ -55,9 +64,6 @@ function run_sandbox(sb_env, sb_func, scriptname, ...)
   return pcall(fun)
 end
 
-
-local redis = require('redis')
-local redis_conn = redis.connect(REDIS_HOSTNAME, REDIS_PORT)
 local mongo = require('mongo')
 local db = assert(mongo.Connection.New())
 assert(db:connect('localhost:81'))
@@ -78,6 +84,32 @@ assert(db:connect('localhost:81'))
       local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. nodename .. '"}'   -- TODO: Add security here
       local q = assert(db:query('meteor.duks', query))
       local dukt = q:next()
+
+      -- define print function
+      function console(text)
+        -- message = cjson_safe.encode(message)
+        print ("In print: ")
+        local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. nodename .. '"}'
+        local q = assert(db:query('meteor.duks', query))
+        local dukt = q:next()
+
+        if not (type(dukt.console) == "table") then
+          dukt.console = {}
+        end
+        dukt.console[#dukt.console+1] = pretty.write(text)
+
+        -- TODO: optimize with circular buffer
+        while #dukt.console > 4 do
+          table.remove(dukt.console, 1)
+        end 
+
+        -- {$set: {k: v}}
+        local json_update = {["$set"] = {}}
+
+        json_update["$set"]["console"] = dukt.console
+        -- update(namespace, query, modifier, upsert, multi)
+        return db:update('meteor.duks', query, json_update, true, false)
+      end
 
       -- define send_out as a closure (using upvalues subdomain and nodename)
       function call_node(node_identifier, msg)
@@ -224,7 +256,7 @@ assert(db:connect('localhost:81'))
       setmetatable(dukt_storage, dukt_storage_mt)
 
 
-      function sandbox_http (url) 
+      function sandbox_http (url)
         -- url – The target URL, including scheme, e.g. http://example.com
         -- method (optional, default is "GET") – The HTTP verb, e.g. GET or POST
         -- data (optional) – Either a string (the raw bytes of the request body) or a table (converted to form POST parameters)
@@ -261,6 +293,7 @@ assert(db:connect('localhost:81'))
           sandbox_env_full.storage = dukt_storage
           sandbox_env_full.http = {}
           sandbox_env_full.http.request = sandbox_http
+          sandbox_env_full.console = console
          else
           -- add the msg to the sandbox
           print("user sandbox")
@@ -271,6 +304,7 @@ assert(db:connect('localhost:81'))
           sandbox_env.storage = dukt_storage
           sandbox_env.http = {}
           sandbox_env.http.request = sandbox_http
+          sandbox_env.console = console
         end
 
 	      local script = dukt.code

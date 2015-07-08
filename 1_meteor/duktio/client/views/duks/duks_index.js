@@ -216,7 +216,11 @@ function load_graph () {
   var cursor = Edges.find();
   cursor.forEach(function (row) {
       var links = new_links(row);
-      graph.addCells(links);
+      try {
+        graph.addCells(links);
+      } catch (err) {
+        console.log("problem with adding a link");
+      };
   });
   console.log("< Out load graph");
 };

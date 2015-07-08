@@ -13,14 +13,14 @@ Router.map(function() {
       AccountsEntry.signInRequired(this);
     },
     waitOn: function () {
-        return [  Meteor.subscribe('lastlogs'), //disabled since the aggregate in the publish function doesn't work well in Meteor
+        return [  Meteor.subscribe('lastlogs'),
                   Meteor.subscribe('duks'),
                   Meteor.subscribe('edges')
                 ];
     },
     data: function () {
       return {
-        duks: Duks.find({}, {sort: {createdAt: -1}}),  // logs: Logs.find({}, {sort: {createdAt: -1}});
+        duks: Duks.find({}, {sort: {createdAt: -1}})  // logs: Logs.find({}, {sort: {createdAt: -1}});
       }
     },
     onStop: function () {
