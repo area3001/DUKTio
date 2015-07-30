@@ -19,14 +19,16 @@ print("**** In supervisor")
 
       for k,v in pairs(worker_list) do
         -- each worker has an entry
-        print("Worker " .. k )
+        print("Worker " .. k)
         print("started at time ")
-        print(type(v))
-        print(v)
-        message, err = cjson_safe.decode(message)
-        print(message)
+        v, err = cjson_safe.decode(v)  -- a string in redis, needs cjson_decode to convert to a table
         if type(v) == "table" then
-          for i,j in pairs(v) do print(i,j) end
+          for i,j in pairs(v) do 
+            if i == "start_at" then
+              -- a worker notes its start time in "j", if it's too long ago, kill it
+              print("running for " .. j - os.time() .. "secs")
+            end
+          end
         end
       end
 
