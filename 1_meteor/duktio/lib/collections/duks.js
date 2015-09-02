@@ -260,14 +260,16 @@ Meteor.methods({
       console.log("Saving existing Dukt");
 
       var values_to_update = {
-          name:doc.name, 
-          subdomain:doc.subdomain,
-          pathname: doc.pathname,
+          name: doc.name, 
+          subdomain: doc.subdomain,
+          pathname: doc.pathname || "",
           code: doc.code,
           graph: doc.graph,
-          input_ports: doc.input_ports,
-          output_ports: doc.output_ports,
+          input_ports: doc.input_ports || [],
+          output_ports: doc.output_ports || [],
         };
+
+      console.log(values_to_update);
 
       // call the mongo update, $set makes sure it isn't just replaced but updated
       Duks.update(

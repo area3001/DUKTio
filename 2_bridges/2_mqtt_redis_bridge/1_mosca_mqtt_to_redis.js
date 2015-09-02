@@ -59,7 +59,8 @@ server.on('published', function(packet, client) {
 // http://mcollina.github.io/mosca/docs/lib/server.js.html
 server.authorizeForward = function(client, packet, callback) {
   // we never send anything to anyone (except explicit through dukt.io)
-  callback(null, false);
+  // callback(null, false);
+  callback(null, true);
 };
 
 // fired when the mqtt server is ready
