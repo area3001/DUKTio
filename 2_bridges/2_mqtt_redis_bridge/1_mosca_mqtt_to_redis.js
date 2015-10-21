@@ -26,6 +26,10 @@ server.on('clientConnected', function(client) {
     console.log('client connected', client.id);     
 });
 
+server.on('subscribed', function (topic, client) {
+    console.log("Subscribed :=", topic);
+});
+
 // fired when a message is received
 server.on('published', function(packet, client) {
   // packet: { cmd: 'publish', retain: false, qos: 0, dup: false, length: 10, topic: '/hi', payload: <Buffer 74 68 65 72 65> }

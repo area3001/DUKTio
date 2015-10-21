@@ -51,8 +51,8 @@ local sandbox_env = {
 }
 
 local posix = require "posix"
-local NUMBER_WORKERS = 10
-local LIMIT_WORKER_RUNNING_DURATION_SECS = 5
+local NUMBER_WORKERS = 3
+local LIMIT_WORKER_RUNNING_DURATION_SECS = 3
 local childPids = {}
 for ii = 1, NUMBER_WORKERS do childPids[ii] = 0 end
 local state = "spawning"

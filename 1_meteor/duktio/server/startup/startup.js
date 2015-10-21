@@ -10,4 +10,5 @@ Meteor.startup(function () {
         someDefault: 'default'
     }
   });
+
 }); 

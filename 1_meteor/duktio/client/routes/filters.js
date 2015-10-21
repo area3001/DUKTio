@@ -4,8 +4,8 @@ var filters = {
 
   resetDukForm: function() {
     AutoForm.resetForm('dukForm')
-  }
+  },
 
 }
 
-//Router.onStop(filters.resetDukForm, {only: ['dukNew', 'dukEdit']});
+// //Router.onStop(filters.resetDukForm, {only: ['dukNew', 'dukEdit']});

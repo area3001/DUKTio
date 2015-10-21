@@ -26,5 +26,5 @@ Meteor.startup(function () {
       required: true                           // Adds html 5 required property if true
      }]
   });
-  
+
 });

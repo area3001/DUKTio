@@ -11,6 +11,7 @@ Router.map(function() {
     path: '/duks',
     onBeforeAction: function () {
       AccountsEntry.signInRequired(this);
+      this.next();
     },
     waitOn: function () {
         return [  Meteor.subscribe('lastlogs'),
@@ -26,8 +27,8 @@ Router.map(function() {
     onStop: function () {
       if (Meteor.user()) {
         console.log("> In router.duks onStop");
-        if (duks_observe_handle) duks_observe_handle.stop();
-        if (edges_observe_handle) edges_observe_handle.stop();
+        if (typeof duks_observe_handle !== "undefined") {duks_observe_handle.stop()};
+        if (typeof edges_observe_handle !== "undefined") {edges_observe_handle.stop()};
         console.log("< Out router.duks onStop");
       };
     }

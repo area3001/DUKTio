@@ -160,5 +160,20 @@ function filter_request(request_orig) {
 // Listen on port 8000, IP defaults to 127.0.0.1
 server.listen(8000);
 
-// Put a friendly message on the terminal
-console.log("Server running at http://127.0.0.1:8000/");
+// // Put a friendly message on the terminal
+// console.log("Server running at http://127.0.0.1:8000/");
+
+// fixturesDir = path.join(__dirname, '..', '..', 'test', 'fixtures');
+// httpProxy.createServer({
+//   target: {
+//     host: 'localhost',
+//     port: 8000
+//   },
+//   ssl: {
+//     key: fs.readFileSync(path.join(fixturesDir, 'agent2-key.pem'), 'utf8'),
+//     cert: fs.readFileSync(path.join(fixturesDir, 'agent2-cert.pem'), 'utf8')
+//   }
+// }).listen(8443);
+
+// // Proxying https to http server
+// console.log("Server running at http://127.0.0.1:8000/");
