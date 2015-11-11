@@ -12,7 +12,7 @@ var ascoltatore = {
 };
 
 var moscaSettings = {
-  port: 1883,
+  port: 11883,
   backend: ascoltatore,
   persistence: {
     factory: mosca.persistence.Redis
@@ -63,7 +63,7 @@ server.on('published', function(packet, client) {
 // http://mcollina.github.io/mosca/docs/lib/server.js.html
 server.authorizeForward = function(client, packet, callback) {
   // we never send anything to anyone (except explicit through dukt.io)
-  // callback(null, false);
+  //callback(null, false);
   callback(null, true);
 };
 

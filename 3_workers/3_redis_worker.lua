@@ -180,7 +180,7 @@ while true do
 
     local mongo = require('mongo')
     local db = assert(mongo.Connection.New())
-    assert(db:connect('localhost:81'))
+    assert(db:connect('localhost:10081'))
 
     while true do
       -- left pop message from Redis message_list queue

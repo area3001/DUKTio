@@ -1,2 +1,2 @@
 #!/bin/bash
-ROOT_URL=http://www.dukt.io meteor --port 80
+ROOT_URL=http://www.dukt.io meteor --port 10080
