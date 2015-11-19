@@ -36,7 +36,7 @@ function create_node(db_node) {
   node.get_name = function() {
     return this.name;
   };
-  
+
   node.get_graph_name = function() {
     return graph_prefix + this.name;
   };
@@ -92,7 +92,7 @@ function new_graph_node(node) {
     new_node.attr('text/fill', 'white');
     new_node.set('inPorts', [node.get_pathname()]);
     new_node.attr('.inPorts circle', { fill: 'black', type: 'no-input' });
-    
+
   }
 
   new_node.prop({orig: node});
@@ -117,7 +117,7 @@ function create_port(full_name) {
   }
 
   port.full = full_name;
-  
+
   port.get_parts = function() {
     var m = re.exec(this.full);
     if ((m) && (m[0]) && (m[1]) && (m[2]) && (m[3])) {
@@ -180,7 +180,7 @@ function new_links(db_edge) {
   // }
   var link_source_node = Duks.findOne({name: edge_source.get_name()});
 
-  var links = []; 
+  var links = [];
   db_edge.endpoints.forEach(
     function(element, index){
       var edge_target = create_port(element);
@@ -210,7 +210,7 @@ function load_graph () {
       var graph_node = new_graph_node(create_node(row));
       console.log(graph_node);
       graph.addCells([graph_node]);
-  }); 
+  });
 
   // do the load for each link
   var cursor = Edges.find();
@@ -232,18 +232,18 @@ function reload_graph () {
 
 
 //////////////////////////////////////////////////////////////////////////////////
-// On iron router rendering 
+// On iron router rendering
 //////////////////////////////////////////////////////////////////////////////////
 
 Template.duksIndex.rendered = function() {
 
   // Need this to know whether mouse is up or down in event handling
   var mouseDown = 0;
-  document.body.onmousedown = function() {mouseDown = 1; } 
+  document.body.onmousedown = function() {mouseDown = 1; }
   document.body.onmouseup = function() {mouseDown = 0; }
 
   //////////////////////////////////////////////////////////////////////////////////
-  // Jointjs 
+  // Jointjs
   //////////////////////////////////////////////////////////////////////////////////
 
   // Setting up the jointjs graph and paper
@@ -277,12 +277,12 @@ Template.duksIndex.rendered = function() {
           // inPorts: ['in1','in2'],
           // outPorts: ['out1'],
           attrs: {
-              '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2, 
+              '.label': { text: "placeholder", //'ref-x': .4, 'ref-y': .2,
                           fill: 'white'},  //text: { text: dukt.name, fill: 'white'}, // 'ref-x': .4, 'ref-y': .2 },
               rect: { fill: '#337ab7', rx: 10, ry: 10 },
               '.inPorts circle': { fill: '#16A085', magnet: 'passive', type: 'input'},
               '.outPorts circle': { fill: '#E74C3C', type: 'output' },
-              // '.inPorts .port .port-label': {"xlink:href": "www.google.com"},              
+              // '.inPorts .port .port-label': {"xlink:href": "www.google.com"},
               '.delete-node-circle': { fill: 'red', graph_node_id: "placeholder"},
           }
       }, joint.shapes.devs.Model.prototype.defaults)
@@ -291,8 +291,8 @@ Template.duksIndex.rendered = function() {
   //////////////////////////////////////////////////////////////////////////////////
   // Jointjs event handling
   //////////////////////////////////////////////////////////////////////////////////
- 
-  // Catch the delete and linking events 
+
+  // Catch the delete and linking events
   // graph.on('all', function(event, cell) {
   //     console.log("event:");
   //     console.log(arguments);
@@ -311,12 +311,13 @@ Template.duksIndex.rendered = function() {
       $(".delete-node-circle").click(function(event){
           console.log("Trigger delete of: " + $(this).attr('graph_node_id'));
       });
-      // Attach to the port 
+      // Attach to the port
       $(".port-label").unbind();
 
       $(".port-label").click(function(event){
           console.log("Clicked port" + $(this)[0].innerHTML);
-          url = Meteor.user().profile.subdomain + ".dukt.io:8000/" + $(this)[0].innerHTML;
+          //url = Meteor.user().profile.subdomain + ".dukt.io:8000/" + $(this)[0].innerHTML;
+          url = $(this)[0].innerHTML + "?subdomain=" + Meteor.user().profile.subdomain;
           window.open(url,'_blank');
       });
       ////////////////
@@ -333,10 +334,10 @@ Template.duksIndex.rendered = function() {
   load_graph();
 
 
-  // // Catch the delete and linking events 
+  // // Catch the delete and linking events
   // graph.on('change', function(event, cell) {
   //     console.log("> In graph.on changed");
-  //     if ((event.attributes) && (event.attributes.type !== 'link') && 
+  //     if ((event.attributes) && (event.attributes.type !== 'link') &&
   //         (event.id) && (event.id.indexOf("graph_node_" == 0))) {
   //       // Graph node changed, need to store it
   //       console.log(". Graph nodes changed");
@@ -366,17 +367,17 @@ Template.duksIndex.rendered = function() {
   //     console.log("< Out graph.on changed");
   // });
 
-  // // Catch the delete and linking events 
+  // // Catch the delete and linking events
   // graph.on('remove', function(event, cell) {
   //     console.log("> In graph.on removed");
   //     var subdomain = Meteor.user().profile.subdomain;
   //     var link_from = subdomain + "." + event.attributes.source.id.substring('graph_node_'.length) + ".out." + event.attributes.source.port;
   //     var link_to = subdomain + "." + event.attributes.target.id.substring('graph_node_'.length) + ".in." + event.attributes.target.port;
   //     // Watch it: triggers to much
-  //     Meteor.call("deleteEdge", {source: link_from, target: link_to}); 
+  //     Meteor.call("deleteEdge", {source: link_from, target: link_to});
   //     console.log("< Out graph.on removed");
   // });
-  
+
   // graph.on('change:source change:target', function(link) {
   //     // link change triggers constantly, so wait for the user to release the mouse button
   //     if (mouseDown) return;
@@ -410,7 +411,7 @@ Template.duksIndex.rendered = function() {
   //     // ].join('');
   //     // console.log(m);
   //     console.log(link);
-      
+
   // });
 
   //////////////////////////////////////////////////////////////////////////////////
@@ -436,16 +437,16 @@ Template.duksIndex.rendered = function() {
     });
 
   edges_observe_handle = Edges.find().observe({
-      
-      // source was added 
-      // added: function (db_edge) { 
+
+      // source was added
+      // added: function (db_edge) {
       //   console.log("> In edges.find observe.added");
       //   var links = new_links(db_edge);
       //   console.log("< Out edges.find observe.added");
       //   graph.addCells(links);
       // },
       // // a target was added or removed in an existing source endpoint
-      // changed: function (id, fields) { 
+      // changed: function (id, fields) {
       //   console.log("> In edges.find observe.changed");
       //   added_link = _.difference(id.endpoints, fields.endpoints);
       //   if (added_link) {
@@ -506,7 +507,7 @@ Template.duksIndex.events ({
     console.log("> In template.events click add-duk");
     e.preventDefault();
     var new_title = "new_duk";
-    
+
     if (Duks.findOne({"name": new_title})) {
       Notifications.info('Could not create new Duk', 'Duk with name "' + new_title + '" already exists. Better rename the existing one first.');
     }
@@ -520,6 +521,7 @@ Template.duksIndex.events ({
   'click .save-graph': function(e) {
     console.log("> In template.events click save-graph");
     e.preventDefault();
+    console.log(graph.toJSON().cells);
     lazyMeteorCall("saveGraphToServer", graph.toJSON().cells);
     console.log("< Out template.events click save-graph");
   },
@@ -530,5 +532,5 @@ Template.duksIndex.events ({
     reload_graph();
 
     console.log("< Out template.events click load-graph");
-  } 
+  }
 });

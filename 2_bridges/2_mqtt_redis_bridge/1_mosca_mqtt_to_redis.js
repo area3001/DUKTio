@@ -134,7 +134,12 @@ function filter_publish(packet_orig) {
   request['path'] = request['pathname'] + '?' + request['search'];
 
 //   // query: Either the 'params' portion of the query string, or a querystring-parsed object. Example: 'query=string' or {'query':'string'}
-//   request['query'] = req_parsed.query;
+  try {
+    request['query'] = JSON.parse(request['search']);
+  }
+  catch(err) {
+    request['query'] = ""
+  }
 
 //   // hash: The 'fragment' portion of the URL including the pound-sign. Example: '#hash'
 //   request['hash'] = req_parsed.hash;

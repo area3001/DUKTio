@@ -15,7 +15,7 @@ PositionSchema = new SimpleSchema({
   x: {
     type: Number,
     optional: true
-  },  
+  },
   y: {
     type: Number,
     optional: true
@@ -215,7 +215,7 @@ Meteor.methods({
       graph: doc.graph
     };
     console.log(doc_to_insert);
-    
+
     // check for schema and insert
     check(doc_to_insert, DukSchema);
     Duks.insert(doc_to_insert);
@@ -227,7 +227,7 @@ Meteor.methods({
       Notifications.error('Authorization Error', 'Please login to create a Duk');
       throw new Meteor.Error("not-authorized");
     }
-    
+
     Duks.insert({
       userId: Meteor.userId(),
       authorId: Meteor.userId(),
@@ -260,7 +260,7 @@ Meteor.methods({
       console.log("Saving existing Dukt");
 
       var values_to_update = {
-          name: doc.name, 
+          name: doc.name,
           subdomain: doc.subdomain,
           pathname: doc.pathname || "",
           code: doc.code,
@@ -273,7 +273,7 @@ Meteor.methods({
 
       // call the mongo update, $set makes sure it isn't just replaced but updated
       Duks.update(
-        duk_to_save._id, {$set: 
+        duk_to_save._id, {$set:
           values_to_update
         }
       )
@@ -286,7 +286,7 @@ Meteor.methods({
     var Duk = Duks.findOne(DukId);
     if (Duk.owner !== Meteor.userId()) {
       throw new Meteor.Error("not-authorized");
-    } 
+    }
     Duks.remove(DukId);
   },
   saveGraphToServer: function (graphInJSON) {
@@ -437,19 +437,20 @@ Meteor.methods({
         // Store the nodes (meaning == dev.Model type)
         if (cell["type"] == "devs.Model") {
             // transform the json
-            node_to_add = 
-              { "_id" : cell.orig.db_orig._id, 
-                "authorId" : cell.orig.db_orig.authorId, 
+            node_to_add =
+              { "_id" : cell.orig.db_orig._id,
+                "authorId" : cell.orig.db_orig.authorId,
                 "code" : cell.orig.db_orig.code,
                 "createdAt" : cell.orig.db_orig.createdAt,
                 "enabled" : true,
                 "graph" : { "position" : { "x" : cell.position.x, "y" : cell.position.y }, "z" : cell.z },
-                "input_ports" : cell.inPorts,  // ["greeting", ... ],
-                "output_ports" : cell.outPorts,  // ["myoutput", ... ],
+                "pathname" : cell.orig.pathname,  // ["greeting", ... ],
+                "input_ports" : cell.orig.input_ports,  // ["greeting", ... ],
+                "output_ports" : cell.orig.output_ports,  // ["myoutput", ... ],
                 "name" : cell.orig.db_orig.name,
                 "subdomain" : Meteor.user().profile.subdomain,
                 "updatedAt" : new Date(),
-                "userId" : Meteor.userId() 
+                "userId" : Meteor.userId()
               }
             // save the node
             Meteor.call("saveDuk", node_to_add);
@@ -465,11 +466,11 @@ Meteor.methods({
             // transform the json
             var link_from =  Meteor.user().profile.subdomain + "." + cell.source.id.substring('graph_node_'.length) + ".out." + cell.source.port;
             var link_to =  Meteor.user().profile.subdomain + "." + cell.target.id.substring('graph_node_'.length) + ".in." + cell.target.port;
-            link_to_save = 
+            link_to_save =
               { "source" : link_from,
                 "target" : link_to
               }
-              
+
             // save the node
             Meteor.call("addEdge", link_to_save);
         }
