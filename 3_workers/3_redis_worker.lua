@@ -10,7 +10,7 @@ local REDIS_PORT = 6379
 local message_list_name = 'message_list'
 local worker_list_name = 'worker_alive_log'
 local pretty = require 'pl.pretty'  -- penlight.pretty library to print nifty tables
-local utils = require 'pl.utils'  -- penlight.util for  
+local utils = require 'pl.utils'  -- penlight.util for
 local cjson_safe = require "cjson.safe"  -- fast C json decoding
 local sig = require "posix.signal"
 
@@ -27,23 +27,23 @@ local sandbox_env = {
   tostring = tostring,
   type = type,
   unpack = unpack,
-  coroutine = { create = coroutine.create, resume = coroutine.resume, 
-      running = coroutine.running, status = coroutine.status, 
+  coroutine = { create = coroutine.create, resume = coroutine.resume,
+      running = coroutine.running, status = coroutine.status,
       wrap = coroutine.wrap },
-  string = { byte = string.byte, char = string.char, find = string.find, 
-      format = string.format, gmatch = string.gmatch, gsub = string.gsub, 
-      len = string.len, lower = string.lower, match = string.match, 
-      rep = string.rep, reverse = string.reverse, sub = string.sub, 
+  string = { byte = string.byte, char = string.char, find = string.find,
+      format = string.format, gmatch = string.gmatch, gsub = string.gsub,
+      len = string.len, lower = string.lower, match = string.match,
+      rep = string.rep, reverse = string.reverse, sub = string.sub,
       upper = string.upper },
-  table = { insert = table.insert, maxn = table.maxn, remove = table.remove, 
+  table = { insert = table.insert, maxn = table.maxn, remove = table.remove,
       sort = table.sort },
-  math = { abs = math.abs, acos = math.acos, asin = math.asin, 
-      atan = math.atan, atan2 = math.atan2, ceil = math.ceil, cos = math.cos, 
-      cosh = math.cosh, deg = math.deg, exp = math.exp, floor = math.floor, 
-      fmod = math.fmod, frexp = math.frexp, huge = math.huge, 
-      ldexp = math.ldexp, log = math.log, log10 = math.log10, max = math.max, 
-      min = math.min, modf = math.modf, pi = math.pi, pow = math.pow, 
-      rad = math.rad, random = math.random, sin = math.sin, sinh = math.sinh, 
+  math = { abs = math.abs, acos = math.acos, asin = math.asin,
+      atan = math.atan, atan2 = math.atan2, ceil = math.ceil, cos = math.cos,
+      cosh = math.cosh, deg = math.deg, exp = math.exp, floor = math.floor,
+      fmod = math.fmod, frexp = math.frexp, huge = math.huge,
+      ldexp = math.ldexp, log = math.log, log10 = math.log10, max = math.max,
+      min = math.min, modf = math.modf, pi = math.pi, pow = math.pow,
+      rad = math.rad, random = math.random, sin = math.sin, sinh = math.sinh,
       sqrt = math.sqrt, tan = math.tan, tanh = math.tanh },
   os = { clock = os.clock, difftime = os.difftime, time = os.time },
   print = print,  -- TODO: need to disable this security-wise
@@ -63,7 +63,7 @@ local supervisor_redis_conn = supervisor_redis.connect(REDIS_HOSTNAME, REDIS_POR
 -- This is the main loop for the forking process.
 -- only the supervisor will reenter this loop
 ----------------------------------------------------------------
-while true do 
+while true do
   -- Timeslice
   posix.sleep(1)
 
@@ -75,11 +75,11 @@ while true do
 
         if pid == 0 then
           -- in child state
-          state = "worker" 
+          state = "worker"
           break -- stop spawning in the child process
         else
           -- in supervisor state
-          state = "supervisor" 
+          state = "supervisor"
           -- if all went fine, note the child pid
           if pid > 0 then
             print("State spawning: spawned child:" .. pid)
@@ -89,16 +89,16 @@ while true do
           -- if pid = -1 something went wrong with the spawning, just redo it ?
           if pid == -1 then
             print("State spawning: spawning failed, marking child for respawning:")
-            childPids[child_nr] = 0   
-          end 
-        end    
+            childPids[child_nr] = 0
+          end
+        end
       end
     end
   end
 
   -- SUPERVISOR
   if state == "supervisor" then
-    -- In state supervisor, check the timings of the workers, and check the processes of the workers 
+    -- In state supervisor, check the timings of the workers, and check the processes of the workers
 
     -- if the worker has been working too long, kill it
     io.write(".")
@@ -118,7 +118,7 @@ while true do
               -- For now it's easy not to test, since it kills all previous workers too.
               sig.kill(pid_worker, sig.KILL)
               -- remove the worker's message from the redis
-              supervisor_redis_conn:hdel(worker_list_name, pid_worker) 
+              supervisor_redis_conn:hdel(worker_list_name, pid_worker)
             end
           end
         end
@@ -130,8 +130,8 @@ while true do
       if childPids[child_nr] > 0 then
         wait_childpid, wait_status_string, wait_status_int = posix.wait(childPids[child_nr], posix.WNOHANG)
         if not (wait_childpid == nil or wait_childpid == 0)  -- must contain the pid of the process terminated
-            and (wait_status_string == "exited" 
-                or wait_status_string == "killed" 
+            and (wait_status_string == "exited"
+                or wait_status_string == "killed"
                 or wait_status_string == "stopped") then
            -- Child finished, tag it for respawning
            print("State supervisor: Child " .. wait_childpid .. " " .. wait_status_string .. " due to: " .. wait_status_int)
@@ -147,7 +147,7 @@ while true do
     local worker_pid = posix.getpid('pid')
     print ("=================================================")
     print ("Started worker with pid: " .. worker_pid)
-    print ("=================================================") 
+    print ("=================================================")
 
     local redis = require('redis')
     local redis_conn = redis.connect(REDIS_HOSTNAME, REDIS_PORT)
@@ -167,7 +167,7 @@ while true do
       redis_conn:hset(worker_list_name, worker_pid, message)
 
       if (not sb_func) then return nil end
-     
+
       -- TODO: Add sanitization for scriptname
       local fun, message = load (sb_func, "tmp", "t" , sb_env) -- "t" for tables only
       if not fun then
@@ -178,7 +178,7 @@ while true do
       return pcall(fun)
     end
 
-    local mongo = require('mongo')
+    local mongo = require('mongo')  -- https://github.com/moai/luamongo
     local db = assert(mongo.Connection.New())
     assert(db:connect('localhost:10081'))
 
@@ -214,7 +214,7 @@ while true do
         -- TODO: optimize with circular buffer
         while #dukt.console > 4 do
           table.remove(dukt.console, 1)
-        end 
+        end
 
         -- {$set: {k: v}}
         local json_update = {["$set"] = {}}
@@ -224,7 +224,6 @@ while true do
         return db:update('meteor.duks', query, json_update, true, false)
       end
 
-      -- define send_out as a closure (using upvalues subdomain and nodename)
       function call_node(node_identifier, msg)
         -- route message to system router dukt
         -- TODO: sanity check on portid
@@ -263,18 +262,18 @@ while true do
         redis_conn:rpush('message_list', message)
         print ("In send_out: msg queued succesfully")
       end
-      
+
       function email_send(to, subject, text, config)
       -- http://stackoverflow.com/questions/11070623/lua-send-mail-with-gmail-account
         -- email.send ({
         --   to='<TO_ADDRESS>',
         --   subject='Received payment',
         --   text='Amount: $'..(object.amount/100)
-        --   config = {smtp='<SMTP SERVER>', 
+        --   config = {smtp='<SMTP SERVER>',
         --             username='<SMTP USERNAME>',
         --             password='<SMTP PASSWORD>',
         --             from='<FROM_ADDRESS>',
-        --             port='<SMTP PORT>' 
+        --             port='<SMTP PORT>'
         --             },
         --   })
 
@@ -342,7 +341,7 @@ while true do
         return ok, err
       end
 
-      -- dukt_storage for persistant local state to this node 
+      -- dukt_storage for persistant local state to this node
       dukt_storage_mt = {
         __index = function (_, k)
           -- retrieve the storage field in the dukt document
@@ -361,13 +360,38 @@ while true do
           -- update(namespace, query, modifier, upsert, multi)
           return db:update('meteor.duks', query, json_update, true, false)
         end
-      } 
+      }
 
       dukt_storage = {}
       dukt_storage.__metatable = "A wise man once wrote: not your business"
 
       setmetatable(dukt_storage, dukt_storage_mt)
 
+      -- dukt_nodes for getting and setting nodes' code
+      dukt_nodes_mt = {
+        __index = function (_, node)
+          -- retrieve the code field in the dukt document
+          local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. node .. '"}'
+          local q = assert(db:query('meteor.duks', query))
+          local dukt = q:next()
+          if dukt then return dukt["code"] end
+          return nil
+        end,
+        __newindex = function (_, node, value)
+          -- store the code field in the dukt document
+          local query = '{"subdomain": "' .. subdomain .. '", "name": "' .. node .. '"}'
+          -- {$set: {k: v}}
+          local json_update = {["$set"] = {}}
+          json_update["$set"]["code"] = value
+          -- update(namespace, query, modifier, upsert, multi)
+          return db:update('meteor.duks', query, json_update, true, false)
+        end
+      }
+
+      dukt_nodes = {}
+      dukt_nodes.__metatable = "A wise man once wrote: not your business"
+
+      setmetatable(dukt_nodes, dukt_nodes_mt)
 
       function sandbox_http (url)
         -- url – The target URL, including scheme, e.g. http://example.com
@@ -409,6 +433,7 @@ while true do
           sandbox_env_full.message = message_table
           sandbox_env_full.cjson = cjson_safe
           sandbox_env_full.storage = dukt_storage
+          sandbox_env_full.nodes = dukt_nodes
           sandbox_env_full.http = {}
           sandbox_env_full.http.request = sandbox_http
           sandbox_env_full.console = console
@@ -421,10 +446,11 @@ while true do
           sandbox_env.email = {}
           sandbox_env.email.send = email_send
           sandbox_env.storage = dukt_storage
+          sandbox_env.nodes = dukt_nodes
           sandbox_env.http = {}
           sandbox_env.http.request = sandbox_http
           sandbox_env.console = console
-          sandbox_env.mqtt_publish = mqtt_publish          
+          sandbox_env.mqtt_publish = mqtt_publish
         end
 
 	      local script = dukt.code
@@ -437,7 +463,7 @@ while true do
         -- clear the message on the supervisor hash in redis
         redis_conn:hdel(worker_list_name, worker_pid)
 
-        -- write the result or error to the DB 
+        -- write the result or error to the DB
         if pcall_rc then
           -- Write succes in the logs
           result_or_err_msg = result_or_err_msg or ""
@@ -445,7 +471,7 @@ while true do
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-          assert(db:insert('meteor.logs', query)) 
+          assert(db:insert('meteor.logs', query))
 
           -- write success in the lastlogs
           query_remove = '{"ref_dukt": "' .. dukt._id  .. '"}'
@@ -457,7 +483,7 @@ while true do
           assert(db:remove('meteor.lastlogs', query_remove))
           assert(db:insert('meteor.lastlogs', query))
           print("pcall ok")
-        else 
+        else
           -- Write fail in the logs
           -- TODO: make the substitution in function call sanitize() and call where needed
           result_or_err_msg = result_or_err_msg or ""
@@ -465,7 +491,7 @@ while true do
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-          assert(db:insert('meteor.logs', query))   
+          assert(db:insert('meteor.logs', query))
 
           -- Write fail for lastlog
           query_remove = '{"ref_dukt": "' .. dukt._id ..'"}'
@@ -473,13 +499,13 @@ while true do
               '"result": "' .. string.gsub(result_or_err_msg, "[^a-zA-Z0-9_-]", " ") .. '", ' ..
               '"createdAt": ' .. mongo.Date(os.time())[1] .. ', ' ..
               '"userId": "' .. dukt.userId .. '"}'
-       
+
           assert(db:remove('meteor.lastlogs', query_remove))
           assert(db:insert('meteor.lastlogs', query))
 
           print(result_or_err_msg)
           print("pcall failed")
-        end 
+        end
       end
     end
   end
