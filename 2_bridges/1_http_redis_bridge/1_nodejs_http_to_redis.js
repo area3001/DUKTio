@@ -10,7 +10,7 @@ var domain_escaped = "dukt\.io"
 
 var server = http.createServer(function (request, response) {
   console.log("##############################################");
-  
+
   // stop the favicon request
   if (request.url == "/favicon.ico") return 0;
 
@@ -19,7 +19,7 @@ var server = http.createServer(function (request, response) {
   // authentication necessary here, or do we let Lua do this ?
 
   // message: add the filtered request
-  var message = {}; 
+  var message = {};
   message.msg = filter_request(request);
 
   // message: add routing to the Lua system dukt
@@ -28,10 +28,10 @@ var server = http.createServer(function (request, response) {
   };
 
   console.log(message);
-  
+
   // message to JSON
   message = JSON.stringify(message);
-  
+
   console.log(message);
 
   // Send it to redis queue
@@ -52,7 +52,7 @@ var server = http.createServer(function (request, response) {
 
 function filter_request(request_orig) {
 // Filters the Request (of type http.IncomingMessage) object values to be passed into the backend message
-// The following fields are needed: 
+// The following fields are needed:
 
 // Example for webscript.io:
 // form – A table consisting of form data posted to your script. This field is only present if the request has a Content-Type of multipart/form-data or application/x-www-form-urlencode and the body is successfully parsed as form-encoded.
@@ -74,7 +74,7 @@ function filter_request(request_orig) {
   var protocol = "http";  // later: via request_orig.socket (http://nodejs.org/api/http.html)
   var originalUrl = protocol + '://' + request_orig.headers.host + request_orig.url;
   console.log(originalUrl);
-  
+
   // parse the request, "true" indicates also parse the querystring
   var req_parsed = liburl.parse(originalUrl, true)
 
@@ -92,25 +92,56 @@ function filter_request(request_orig) {
 
   // hostname: Just the lowercased hostname portion of the host. Example: 'host.com'
   request['hostname'] = req_parsed.hostname;
-  
+
   // port: The port number portion of the host. Example: '8080'
   request['port'] = req_parsed.port;
 
   // path: The path section of the URL, that comes after the host and before the query, including the initial slash if present. Example: '/p/a/t/h'
-  request['pathname'] = req_parsed.pathname;
-  
+  // Need to strip out the API KEY
+  var url_pattern = new RegExp('^\/*[a-zA-Z0-9_-]*\/([a-zA-Z0-9_-]*)\/*.*$');
+  var pathString = url_pattern.exec(req_parsed.pathname);
+  if(!pathString) {
+    request['pathname'] = '';
+  }
+  else {
+    request['pathname'] = pathString[1];
+  };
+
+  // API or CLIENT KEY
+  console.log("PATHNAME");
+  console.log(req_parsed.pathname);
+  console.log("END PATHNAME");
+  var url_pattern = new RegExp('^\/*([a-zA-Z0-9_-]*)\/.*$');
+  var keyString = url_pattern.exec(req_parsed.pathname);
+  if(!keyString) {
+    request['key'] = '';
+  }
+  else {
+    request['key'] = keyString[1];
+  };
+
+  // path: The path section of the URL, that comes after the host and before the query, including the initial slash if present. Example: '/p/a/t/h'
+  var url_pattern = new RegExp('^\/*[a-zA-Z0-9_-]*\/([\/a-zA-Z0-9_-]*).*$');
+  var full_pathString = url_pattern.exec(req_parsed.pathname);
+  if(!full_pathString) {
+    full_path = '';
+  }
+  else {
+    full_path = full_pathString[1];
+  };
+
   // search: The 'query string' portion of the URL, including the leading question mark. Example: '?query=string'
   request['search'] = req_parsed.search;
 
   // path: Concatenation of pathname and search. Example: '/p/a/t/h?query=string'
-  request['path'] = req_parsed.path;
+  request['path'] = full_path + request['search']; // req_parsed.path;
 
   // query: Either the 'params' portion of the query string, or a querystring-parsed object. Example: 'query=string' or {'query':'string'}
   request['query'] = req_parsed.query;
 
   // hash: The 'fragment' portion of the URL including the pound-sign. Example: '#hash'
   request['hash'] = req_parsed.hash;
-  
+
   // Subdomain, TODO: security and optimization
   var url_pattern = new RegExp('^([a-z0-9_-]*)\.' + domain_escaped);
   var subdomainString = url_pattern.exec(request['hostname']);
@@ -121,7 +152,7 @@ function filter_request(request_orig) {
     request['subdomain'] = subdomainString[1];
   };
 
-  // the ipaddress 
+  // the ipaddress
   request['origin_address'] = (request_orig.headers["X-Forwarded-For"] ||
                                request_orig.headers["x-forwarded-for"] ||
                                '').split(',')[0] ||  // a list, [1], [2] are proxies
@@ -138,7 +169,7 @@ function filter_request(request_orig) {
   // TODO: form
   request['form'] = null;
 
-  // TODO: body 
+  // TODO: body
   request['body'] = null;
 
   // TODO: method
@@ -151,9 +182,9 @@ function filter_request(request_orig) {
   request['scheme'] = null;
 
   // TODO: headers
-  request['headers'] = null 
+  request['headers'] = null
 
-  return request; 
+  return request;
 
 }
 
