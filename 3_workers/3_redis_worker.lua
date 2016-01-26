@@ -393,7 +393,7 @@ while true do
 
       setmetatable(dukt_nodes, dukt_nodes_mt)
 
-      function sandbox_http (url)
+      function sandbox_http (url, body)
         -- url – The target URL, including scheme, e.g. http://example.com
         -- method (optional, default is "GET") – The HTTP verb, e.g. GET or POST
         -- data (optional) – Either a string (the raw bytes of the request body) or a table (converted to form POST parameters)
@@ -407,11 +407,57 @@ while true do
         -- content – The raw bytes of the HTTP response body, after being decoded if necessary according to the response's Content-Encoding header.
         -- statuscode – The numeric status code of the HTTP response
         -- headers – A table of the response's headers
-        local http = require("socket.http")
+
 
         -- using the simple http request method for now, see http://w3.impa.br/~diego/software/luasocket/http.html
-        return http.request(url)
+        --local http = require("socket.http")
+        --return http.request(url, body)
 
+        local method = "POST"
+        if body == nil then
+          method = "GET"
+        end
+
+        if string.sub(url,1,8) == "https://" then
+          local https = require 'ssl.https'
+          local ltn12 = require 'ltn12'
+          response_body = {}
+          request_body = body
+
+          https.request{
+              url = url,
+              method = "POST",
+              headers = {
+                   ["Accept"] = "*/*",
+                   ["Content-type"] = "application/json",
+                   ["Content-Length"] = string.len(request_body)
+               },
+               source = ltn12.source.string(request_body),
+               sink = ltn12.sink.table(response_body),
+               protocol = "tlsv1"
+          }
+          return response_body
+        else
+
+          -- more generic form
+          local http = require 'socket.http'
+          local ltn12 = require 'ltn12'
+          response_body = {}
+          request_body = body
+
+          http.request{
+              url = url,
+              method = "POST",
+              headers = {
+                   ["Accept"] = "*/*",
+                   ["Content-type"] = "application/json",
+                   ["Content-Length"] = string.len(request_body)
+               },
+               source = ltn12.source.string(request_body),
+               sink = ltn12.sink.table(response_body)
+          }
+          return response_body
+        end
       end
 
       function mqtt_publish(topic, message)
