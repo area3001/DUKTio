@@ -416,6 +416,14 @@ while true do
 
       function mqtt_publish(topic, message)
         -- function to allow a dukt to send out an MQTT message to the localhost with the specified topic
+
+        -- -- append the dukt API key "WAf10c2htTn1FT45jLIInFTQVRb9hF5" to the message first
+        if string.sub(topic,1,1) == "/" then
+          topic = subdomain .. "/WAf10c2htTn1FT45jLIInFTQVRb9hF5/" .. topic
+        else
+          topic = subdomain .. "/WAf10c2htTn1FT45jLIInFTQVRb9hF5/" .. topic
+        end
+
         mqtt_client:publish(topic, message)
       end
 

@@ -1,6 +1,7 @@
 var mosca = require('mosca')
 var redis = require("redis");
 
+var nop = function() {};
 
 var ascoltatore = {
   type: 'redis',
@@ -27,7 +28,8 @@ server.on('clientConnected', function(client) {
 });
 
 server.on('subscribed', function (topic, client) {
-    console.log("Subscribed :=", topic);
+    console.log("-> subscribed");
+    console.log("   topic" + topic);
 
     var message = {};
     message.msg = filter_subscribe(topic);
@@ -37,14 +39,9 @@ server.on('subscribed', function (topic, client) {
       "to": 'system.mqtt.in.mqttsubscribe',
     };
 
-    console.log("****TOPIC***");
-    console.log(topic);
-    console.log("****TOPIC END***");
-    console.log(message);
-    console.log("****MESSAGE END***");
-
     // message to JSON
     message = JSON.stringify(message);
+    console.log(message);
 
     // Send it to redis queue
     var client = redis.createClient();
@@ -55,12 +52,57 @@ server.on('subscribed', function (topic, client) {
 
     // quit, but wait for the redis reply
     client.quit();  // TODO: Check whether client.end() which doesn't wait for the redis reply isn't a better option (higher throughput?)
+    console.log("<- subscribed");
 });
+
+function clean_topic(topic) {
+  // returns a clean topic, e.g. strip the dukt API key out of the topic
+  var index = topic.lastIndexOf("WAf10c2htTn1FT45jLIInFTQVRb9hF5");
+  console.log(index);
+  if (index >= 0) {
+    // This packet came from within dukt
+    // remove the KEY from the topic, and forward the packet
+    topic = topic.substring(0, index) + topic.substring(index + 32);
+    console.log(topic);
+    console.log("Clean_topic: from dukt, topic stripped");
+  };
+  return topic;
+}
+
+// // published is overwritten
+// // to clean the topic when it is published from within dukt
+// server.published = function(packet, client, cb) {
+//   console.log("-> published");
+//   var cleaned_topic = clean_topic(packet.topic);
+//   if (packet.topic === cleaned_topic) {
+//     // not stripped, hence not from within dukt
+//     // don't further alter the packet here
+//     return cb();
+//   }
+//   else {
+//     // from within dukt
+//     // we need to strip the topic
+//     var newPacket = {
+//       topic: cleaned_topic,
+//       payload: packet.payload,
+//       retain: packet.retain,
+//       qos: packet.qos,
+//       dukt_origin: true
+//     };
+//
+//     console.log("Published: republishing as:")
+//     console.log(newPacket);
+//     server.publish(newPacket, cb);
+//   }
+//   console.log("<- published");
+// }
 
 // fired when a message is received
 server.on('published', function(packet, client) {
   // packet: { cmd: 'publish', retain: false, qos: 0, dup: false, length: 10, topic: '/hi', payload: <Buffer 74 68 65 72 65> }
   // client: Client { connection: { _readableState: {defaultEncoding: 'utf-8' ...
+  console.log("-> on published");
+  console.log(packet);
 
   var message = {};
   message.msg = filter_publish(packet);
@@ -70,10 +112,9 @@ server.on('published', function(packet, client) {
     "to": 'system.mqtt.in.mqttpublish',
   };
 
-  console.log(message);
-
   // message to JSON
   message = JSON.stringify(message);
+  console.log(message);
 
   // Send it to redis queue
   var client = redis.createClient();
@@ -84,6 +125,7 @@ server.on('published', function(packet, client) {
 
   // quit, but wait for the redis reply
   client.quit();  // TODO: Check whether client.end() which doesn't wait for the redis reply isn't a better option (higher throughput?)
+  console.log("<- on published");
 
 });
 
@@ -92,20 +134,46 @@ server.authorizeForward = function(client, packet, callback) {
   // we never send anything to anyone (except explicit through dukt.io)
   // we know it was send through dukt.io cause the MQTT_DUKT_KEY is the first
   // part of the message
+  console.log("-> authorizeForward");
+  // client.subscriptions == { '#': { qos: 0, handler: [Function] },
+  //   topic1: { qos: 0, handler: [Function] },
+  //   topic2: { qos: 0, handler: [Function] } }
 
-  if (packet.topic.substring(0, 32) == "WAf10c2htTn1FT45jLIInFTQVRb9hF50") {
-    // This packet came from within dukt
-    // remove the KEY from the topic, and forward the packet
-    callback(null, true);  // forward
+  if (packet.dukt_origin) {
+    console.log("   forwarding");
+    callback(null, true);
   }
   else {
-    callback(null, false);  // Don't forward
+    console.log("   not forwarding");
+    callback(null, false);
   }
+  console.log("<- authorizeForward");
+};
+
+// overwriten since we do not allow subscribes for wildcard in the first
+// two levels of the topic hierarchy, i.e. a/b/# is ok, but not a/# or #.
+// also disallow the $SYS topics
+server.authorizeSubscribe = function(client, topic, callback) {
+  topic_split = topic.split("/");
+  if (topic_split[0] === "#" ||
+      topic_split[0] === "+" ||
+      topic_split[0] === "$SYS" ||
+      topic_split[1] === "#" ||
+      topic_split[1] === "+") {
+        console.log("subscribe " + topic + " not authorized")
+        callback(null, false);
+      }
+  else {
+    callback(null, true);
+  };
 };
 
 // fired when the mqtt server is ready
 function setup() {
-  console.log('Mosca server is up and running')
+  console.log('Mosca server is up and running');
+//   server.authenticate = authenticate;
+//   server.authorizePublish = authorizePublish;
+//   server.authorizeSubscribe = authorizeSubscribe;
 }
 
 function filter_publish(packet_orig) {
@@ -282,3 +350,88 @@ function filter_subscribe(topic) {
   return request;
 
 }
+
+
+///////////
+// OVERWRITTEN TO CHANGE THE MOSCA IMPLEMENTATION
+///////////
+
+/**
+ * Publishes a packet on the MQTT broker.
+ *
+ * @api public
+ * @param {Object} packet The MQTT packet, it should include the
+ *                        topic, payload, qos, and retain keys.
+ * @param {Object} client The client object (internal)
+ * @param {Function} callback The callback
+ */
+server.publish = function publish(packet, client, callback) {
+
+  console.log("in publish !!!");
+  console.log(packet);
+  var that = this;
+  var logger = this.logger;
+
+  if (typeof client === 'function') {
+    callback = client;
+    client = null;
+  } else if (client) {
+    logger = client.logger;
+  }
+
+  if (!callback) {
+    callback = nop;
+  }
+
+  // PAVE: remove the dukt API key
+  // and set the origin from inside dukt or not
+  var cleaned_topic = clean_topic(packet.topic);
+  var dukt_origin = false;
+  if (cleaned_topic !== packet.topic) {
+    // from within dukt
+    dukt_origin = true;
+  }
+
+  var newPacket = {
+    topic: cleaned_topic,
+    payload: packet.payload,
+    messageId: this.generateUniqueId(),
+    qos: packet.qos,
+    retain: packet.retain
+  };
+
+  var opts = {
+    qos: packet.qos,
+    messageId: newPacket.messageId,
+    dukt_origin: dukt_origin
+  };
+
+  if (client) {
+    opts.clientId = client.id;
+  }
+
+  that.storePacket(newPacket, function() {
+
+    if (that.closed) {
+      logger.debug({ packet: newPacket }, "not delivering because we are closed");
+      return;
+    }
+
+    that.ascoltatore.publish(
+      newPacket.topic,
+      newPacket.payload,
+      opts,
+      function() {
+        that.published(newPacket, client, function() {
+          if( newPacket.topic.indexOf( '$SYS' ) >= 0 ) {
+            logger.trace({ packet: newPacket }, "published packet");
+          } else {
+            logger.debug({ packet: newPacket }, "published packet");
+          }
+          that.emit("published", newPacket, client);
+          callback();
+        });
+      }
+    );
+  });
+};
