@@ -1,3 +1,7 @@
+SVGElement.prototype.getTransformToElement = SVGElement.prototype.getTransformToElement || function(toElement) {
+    return toElement.getScreenCTM().inverse().multiply(this.getScreenCTM());
+};
+
 /*! JointJS v0.9.2 - JavaScript diagramming library  2014-09-17 
 
 
