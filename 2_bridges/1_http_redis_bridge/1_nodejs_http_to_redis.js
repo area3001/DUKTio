@@ -4,34 +4,24 @@ var http = require('http');
 var querystring = require('querystring');
 var redis = require("redis");
 var liburl = require('url')
+var querystring = require('querystring');  //http://stackoverflow.com/questions/4295782/how-do-you-extract-post-data-in-node-js
 
 var domain = "localhost.com"
 var domain_escaped = "dukt\.io"
 
 var server = http.createServer(function (request, response) {
-  console.log("##############################################");
 
   // stop the favicon request
   if (request.url == "/favicon.ico") return 0;
 
-  // console.log(request);
+  // filters the request and writes it to redis afterwards
+  filter_request(request, response, write_to_redis);
 
-  // authentication necessary here, or do we let Lua do this ?
+});
 
-  // message: add the filtered request
-  var message = {};
-  message.msg = filter_request(request);
-
-  // message: add routing to the Lua system dukt
-  message.routing = {
-    "to": 'system.http.in.httprequest',
-  };
-
-  console.log(message);
-
+function write_to_redis(message, response) {
   // message to JSON
   message = JSON.stringify(message);
-
   console.log(message);
 
   // Send it to redis queue
@@ -41,34 +31,39 @@ var server = http.createServer(function (request, response) {
   });
   client.rpush("message_list", message);
 
-  // write the response, closing the connection
-  response.writeHead(200, {"Content-Type": "text/plain"});
-  response.end('{status: "ok"}\n');
-
   // quit, but wait for the redis reply
   client.quit();  // TODO: Check whether client.end() which doesn't wait for the redis reply isn't a better option (higher throughput?)
 
-});
+  // write the response, closing the connection
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end('{status: "ok"}\n');
+}
 
-function filter_request(request_orig) {
-// Filters the Request (of type http.IncomingMessage) object values to be passed into the backend message
-// The following fields are needed:
+// used to get the POST data from the request
+function processPost(request, response, callback) {
+    var queryData = "";
+    if(typeof callback !== 'function') return null;
 
-// Example for webscript.io:
-// form – A table consisting of form data posted to your script. This field is only present if the request has a Content-Type of multipart/form-data or application/x-www-form-urlencode and the body is successfully parsed as form-encoded.
-// query – A table consisting of query string parameters from the request's URL. For example, the query string ?color=red&number=3 will result in a query table of {color="red", number="3"}.
-// querystring – The raw query string from the URL. Using the previous example, the querystring value would be "color=red&number=3".
-// files – A table consisting of files included in a form post. For each included file, the key is the name of the form's input field, and the value is a table consisting of type (the content-type of the uploaded file), filename (original file name), and content (the raw contents of the file).
-// body – The content of the request, after it's been decoded as needed (e.g. decompressed as specified by a Content-Encoding header).
-// method – The HTTP request method. (E.g., GET, POST, ...)
-// remote_addr – The request's origin IP address.
-// scheme – The URL scheme. (E.g., http or https.)
-// port – The URL's port. (E.g., 80 or 443.)
-// path – The URL's path. (E.g., for the URL http://example.webscript.io/foo/bar, the path is /foo/bar.)
-// headers – A table of the HTTP request headers. Keys are "train-cased," like Content-Type.
-// Note: To support Internet Explorer's cross-domain requests using XDomainRequest, if a request has no Content-Type header, an attempt is still made to parse it as application/x-www-form-urlencode.
+    request.on('data', function(data) {
+        queryData += data;
+        if(queryData.length > 1e6) {
+            queryData = "";
+            response.writeHead(413, {'Content-Type': 'text/plain'}).end();
+            request.connection.destroy();
+        }
+    });
 
+    request.on('end', function() {
+        request.post = querystring.parse(queryData);
+        callback(request);
+    });
+}
+
+function filter_request_get(request_orig) {
   request = {};
+
+  request['method'] = request_orig.method;
+  request['post'] = request_orig.post;
 
   // original url
   var protocol = "http";  // later: via request_orig.socket (http://nodejs.org/api/http.html)
@@ -108,9 +103,6 @@ function filter_request(request_orig) {
   };
 
   // API or CLIENT KEY
-  console.log("PATHNAME");
-  console.log(req_parsed.pathname);
-  console.log("END PATHNAME");
   var url_pattern = new RegExp('^\/*([a-zA-Z0-9_-]*)\/.*$');
   var keyString = url_pattern.exec(req_parsed.pathname);
   if(!keyString) {
@@ -172,9 +164,6 @@ function filter_request(request_orig) {
   // TODO: body
   request['body'] = null;
 
-  // TODO: method
-  request['method'] = request_orig.method;
-
   // TODO: remote_addr
   request['remote_addr'] = null;
 
@@ -185,7 +174,40 @@ function filter_request(request_orig) {
   request['headers'] = null
 
   return request;
+}
 
+function filter_request(request, response, callback) {
+// Filters the Request (of type http.IncomingMessage) object values to be passed into the backend message
+// The following fields are needed:
+
+// Example for webscript.io:
+// form – A table consisting of form data posted to your script. This field is only present if the request has a Content-Type of multipart/form-data or application/x-www-form-urlencode and the body is successfully parsed as form-encoded.
+// query – A table consisting of query string parameters from the request's URL. For example, the query string ?color=red&number=3 will result in a query table of {color="red", number="3"}.
+// querystring – The raw query string from the URL. Using the previous example, the querystring value would be "color=red&number=3".
+// files – A table consisting of files included in a form post. For each included file, the key is the name of the form's input field, and the value is a table consisting of type (the content-type of the uploaded file), filename (original file name), and content (the raw contents of the file).
+// body – The content of the request, after it's been decoded as needed (e.g. decompressed as specified by a Content-Encoding header).
+// method – The HTTP request method. (E.g., GET, POST, ...)
+// remote_addr – The request's origin IP address.
+// scheme – The URL scheme. (E.g., http or https.)
+// port – The URL's port. (E.g., 80 or 443.)
+// path – The URL's path. (E.g., for the URL http://example.webscript.io/foo/bar, the path is /foo/bar.)
+// headers – A table of the HTTP request headers. Keys are "train-cased," like Content-Type.
+// Note: To support Internet Explorer's cross-domain requests using XDomainRequest, if a request has no Content-Type header, an attempt is still made to parse it as application/x-www-form-urlencode.
+
+  // the POST data can come in blocks so we work with a callback
+  var message = {};
+  message.routing = {
+    "to": 'system.http.in.httprequest',  // the dukt node this will be routed to
+  };
+  if(request['method'] == 'POST') {
+    processPost(request, response, function(request) {
+      message.msg = filter_request_get(request);
+      callback(message, response); // callback will write to the DB
+    });
+  } else {
+    message.msg = filter_request_get(request);
+    callback(message, response); // callback will write to the DB
+  }
 }
 
 // Listen on port 8000, IP defaults to 127.0.0.1
