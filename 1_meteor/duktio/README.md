@@ -1,3 +1,8 @@
+
+# Based on https://github.com/kjetilhau/meteor-skeleton.git
+
+------
+
 # Meteor-skeleton
 A skeleton/boilerplate for Meteor - giving you a more organized and structured way to create projects.
 
