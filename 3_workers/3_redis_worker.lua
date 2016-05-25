@@ -385,6 +385,30 @@ while true do
           json_update["$set"]["code"] = value
           -- update(namespace, query, modifier, upsert, multi)
           return db:update('meteor.duks', query, json_update, true, false)
+        end,
+        __call = function (_)
+          -- retrieve all nodes
+          local nodes = {}
+          local query = '{"subdomain": "' .. subdomain .. '"}'
+          local q = assert(db:query('meteor.duks', query))
+          for result in q:results() do
+            -- pretty.dump(result)
+            nodes[result._id] = {}
+            -- -- nodes[result.userId] = result.userId
+            -- -- nodes[result.authorId] = result.authorId
+            nodes[result._id]["name"] = result.name
+            -- -- nodes[result.subdomain] = result.subdomain
+            nodes[result._id]["createdAt"] = result.createdAt
+            nodes[result._id]["enabled"] = result.enabled
+            nodes[result._id]["graph"] = result.graph
+            nodes[result._id]["code"] = result.code
+            nodes[result._id]["pathname"] = result.pathname
+            -- nodes[result._id]["console"] = result.console
+          end
+          if next(nodes) ~= nil then
+            return nodes
+          end
+          return nil
         end
       }
 
@@ -392,6 +416,28 @@ while true do
       dukt_nodes.__metatable = "A wise man once wrote: not your business"
 
       setmetatable(dukt_nodes, dukt_nodes_mt)
+
+      -- dukt_nodes for getting edges
+      dukt_edges_mt = {
+        __call = function (_)
+          -- retrieve all edges
+          local edges = {}
+          local query = '{"userId": "' .. dukt.userId .. '"}'
+          local q = assert(db:query('meteor.edges', query))
+          for result in q:results() do
+            edges[result._id] = result.endpoints
+          end
+          if next(edges) ~= nil then
+            return edges
+          end
+          return nil
+        end
+      }
+
+      dukt_edges = {}
+      dukt_edges.__metatable = "A wise man once wrote: not your business"
+
+      setmetatable(dukt_edges, dukt_edges_mt)
 
       function sandbox_http (url, body)
         -- url – The target URL, including scheme, e.g. http://example.com
@@ -488,6 +534,7 @@ while true do
           sandbox_env_full.cjson = cjson_safe
           sandbox_env_full.storage = dukt_storage
           sandbox_env_full.nodes = dukt_nodes
+          sandbox_env_full.edges = dukt_edges
           sandbox_env_full.http = {}
           sandbox_env_full.http.request = sandbox_http
           sandbox_env_full.console = console
@@ -501,6 +548,7 @@ while true do
           sandbox_env.email.send = email_send
           sandbox_env.storage = dukt_storage
           sandbox_env.nodes = dukt_nodes
+          sandbox_env.edges = dukt_edges
           sandbox_env.http = {}
           sandbox_env.http.request = sandbox_http
           sandbox_env.console = console
