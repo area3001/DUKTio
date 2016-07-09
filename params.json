@@ -1,0 +1,6 @@
+{
+  "name": "Duktio",
+  "tagline": "Microservices, webscripts for IoT, open data, and much more.",
+  "body": "# DUKTio\r\nMicroservices, webscripts for IoT, open data, and much more.\r\nPublic version running at http://www.dukt.io\r\n\r\n## Install instructions\r\n+ NGINX (list the available sites)\r\n+ \r\n\r\n## TODOS\r\n\r\n+ Install instructions\r\n+ Describe architecture\r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
