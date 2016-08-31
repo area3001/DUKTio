@@ -41,15 +41,151 @@ Public version running at <a href="http://www.dukt.io">http://www.dukt.io</a></p
 <a id="install-instructions" class="anchor" href="#install-instructions" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Install instructions</h2>
 
 <ul>
-<li>NGINX (list the available sites)</li>
 <li>
+<p>Setup the system domain == an account tied to the "system" domain that contains the Lua code that allows to customize the internal handling of the messages, i.e. routing and bridges (http and mqtt) </p>
+
+<ul>
+<li>Make an account on your Dukt server</li>
+<li>Go to profile and set the subdomain field to "system"</li>
+<li>
+<p>Go to Duks and add the following nodes (leave path, input and output ports blank):</p>
+
+<ul>
+<li>
+<p>click New Dukt:</p>
+
+<ul>
+<li>name: <code>router</code>
+</li>
+<li>
+<p>code: </p>
+
+<pre><code>print ("In system.router")
+pretty.dump(message)
+
+-- Get the sender info
+local routing_from = message.routing.from
+-- local subdomain, dukt, direction, port = unpack(utils.split(routing_from,".", 1))
+
+-- Get the endpoints
+local query = '{_id: "' .. message.routing.from .. '"}'
+local edges = assert(mongo_conn:query('meteor.edges', query))
+local endpoints = edges:next().endpoints
+pretty.dump(endpoints)
+
+-- Push 1 message for each endpoint to the worker queue
+for k,endpoint in pairs(endpoints) do
+  print("In endpoint " .. endpoint)
+  message.routing.to = endpoint
+  redis_conn:rpush("message_list", cjson.encode(message))
+end
+print ("Leaving system.router")
+return "ok"
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p>click New Dukt:</p>
+
+<ul>
+<li>name: <code>http</code>
+</li>
+<li>
+<p>code: </p>
+
+<pre><code>print ("***** Entering system.http")
+-- console(pretty.write(message))
+
+-- Get the routing info for the user msg
+local subdomain = message.msg.subdomain
+local pathname = message.msg.pathname
+-- pathname = string.sub(pathname, 1)
+message.routing = {}
+
+-- Get the endpoints
+-- local query = '{_id: "httprequest|' .. subdomain ..'.' .. pathname .. '"}'   
+local query = '{"subdomain": "' .. subdomain .. '" , "pathname": "' .. pathname .. '"}'   -- TODO: Add security
+-- console ("Query: " .. query)
+local duks = assert(mongo_conn:query('meteor.duks', query)):results()
+-- pretty.dump(duks)
+
+-- Push 1 message for each dukt to the worker queue
+for duk in duks do
+  -- console("In system.http: queueing msg to duk " .. duk.name)
+  message.routing.to = subdomain .. "." .. duk.name .. ".in." .. pathname
+  redis_conn:rpush("message_list", cjson.encode(message))
+end
+print ("***** Leaving system.http")
+return "OK"
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p>click New Dukt:</p>
+
+<ul>
+<li>name: <code>mqtt</code>
+</li>
+<li>
+<p>code: </p>
+
+<pre><code>-- This dukt loops over all subscribers and sends them the message
+print ("***** Entering system.mqtt")
+-- pretty.dump(message)
+
+-- Get the routing info for the user msg
+console(pretty.write(message))
+
+local subdomain = message.msg.subdomain
+local pathname = message.msg.pathname
+pathname = string.sub(pathname, 1)
+message.routing = {}
+
+-- Get the endpoints
+-- local query = '{_id: "httprequest|' .. subdomain ..'.' .. pathname .. '"}'   
+local query = '{"subdomain": "' .. subdomain .. '" , "pathname": "' .. pathname .. '"}'   -- TODO: Add security
+-- print ("Query: " .. query)
+local duks = assert(mongo_conn:query('meteor.duks', query)):results()
+-- pretty.dump(duks)
+
+-- make it that the user knows whether it's an publish or subscribe
+if message.routing == "system.mqtt.in.mqttpublish" then
+  message.msg.action = "publish"
+elseif message.routing == "system.mqtt.in.mqttsubscribe" then
+  message.msg.action = "subscribe"  
+end
+
+-- Push 1 message for each dukt to the worker queue
+for duk in duks do
+  print("In system.http: queueing msg to duk " .. duk.name)
+  message.routing.to = subdomain .. "." .. duk.name .. ".in." .. pathname
+  redis_conn:rpush("message_list", cjson.encode(message))
+end
+
+print ("***** Leaving system.mqtt")
+return "OK"
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
 <h2>
 <a id="todos" class="anchor" href="#todos" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>TODOS</h2>
 
 <ul>
-<li>Install instructions</li>
+<li>Install instructions
+
+<ul>
+<li>nginx setup</li>
+</ul>
+</li>
 <li>Describe architecture</li>
 </ul>
       </section>
