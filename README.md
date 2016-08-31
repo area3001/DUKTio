@@ -3,7 +3,7 @@ Microservices, webscripts for IoT, open data, and much more.
 Public version running at http://www.dukt.io
 
 ## Install instructions
-+ Setup the system domain == a account tied to the "system" domain that contains the Lua code that allows to customize the internal handling of the messages, i.e. routing and bridges (http and mqtt) 
++ Setup the system domain == an account tied to the "system" domain that contains the Lua code that allows to customize the internal handling of the messages, i.e. routing and bridges (http and mqtt) 
     + Make an account on your Dukt server
     + Go to profile and set the subdomain field to "system"
     + Go to Duks and add the following nodes (leave path, input and output ports blank):
